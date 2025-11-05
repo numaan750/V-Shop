@@ -49,7 +49,7 @@ const CartDrawer = ({ isOpen, onClose, cartItems = [] }) => {
             <div className="text-center mb-8">
               <p className="text-gray-500 mb-8">No products in the cart.</p>
               <button
-                onClick={() => handleNavigate("/shop")}
+                onClick={() => handleNavigate("/ordercarts")}
                 className="w-full mb-8 bg-[#f0243c] text-white py-3 rounded-full font-semibold hover:bg-[#ff334b] transition"
               >
                 CONTINUE SHOPPING
