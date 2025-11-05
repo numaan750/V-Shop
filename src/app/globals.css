@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+
+.Mycontainer{
+  width: 90%;
+  max-width: 1440px;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUpEaseOut {
+  0% {
+    opacity: 0;
+    transform: translateY(90px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDownEaseIn {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  
+  100% {
+    opacity: 0;
+    transform: translateY(100px) scale(0.97);
+  }
+}
+
+.animate-slideUpEaseOut {
+  animation: slideUpEaseOut 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-slideDownEaseIn {
+  animation: slideDownEaseIn 0.1s ease-in forwards;
+}
