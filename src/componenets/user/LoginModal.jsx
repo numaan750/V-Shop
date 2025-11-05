@@ -5,7 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { AuthContext } from "@/context/AuthContext";
 
-const API_URL = "http://localhost:4000/api/auth";
+const API_URL = "https://velora-website-backend.vercel.app/api/auth";
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [show, setShow] = useState(false);
