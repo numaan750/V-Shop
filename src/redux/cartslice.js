@@ -1,0 +1,180 @@
+// redux/cartslice.js
+import { createSlice } from '@reduxjs/toolkit';
+
+const cartSlice = createSlice({
+  name: 'cart',
+  initialState: {
+    items: [],
+    userId: null,
+    guestCart: [],
+    userCarts: {},
+  },
+  reducers: {
+    // ✅ User login - guest cart merge with user cart
+    setUserId: (state, action) => {
+      const userId = action.payload;
+      console.log(`👤 Setting user ID: ${userId}`);
+      
+      state.userId = userId;
+      
+      // Agar guest cart mein items hain
+      if (state.guestCart.length > 0) {
+        console.log(`📦 Merging ${state.guestCart.length} guest items`);
+        
+        // User ki existing cart load karo
+        if (!state.userCarts[userId]) {
+          state.userCarts[userId] = [];
+        }
+        
+        // Guest items ko user cart mein merge karo
+        state.guestCart.forEach(guestItem => {
+          const existing = state.userCarts[userId].find(
+            item => item.id === guestItem.id && 
+                    item.size === guestItem.size && 
+                    item.color === guestItem.color
+          );
+          
+          if (existing) {
+            existing.quantity += guestItem.quantity;
+            existing.totalPrice = existing.price * existing.quantity;
+          } else {
+            state.userCarts[userId].push({...guestItem});
+          }
+        });
+        
+        // Current items update karo
+        state.items = state.userCarts[userId];
+        
+        // Guest cart clear karo
+        state.guestCart = [];
+        
+        console.log(`✅ Merged! User cart now has ${state.items.length} items`);
+      } else {
+        // Guest cart empty hai, user ki saved cart load karo
+        state.items = state.userCarts[userId] || [];
+        console.log(`✅ Loaded ${state.items.length} items for user`);
+      }
+    },
+
+    // ✅ Add to cart
+    addToCart: (state, action) => {
+      const newItem = action.payload;
+      console.log("🛒 Adding item:", newItem.name);
+
+      if (state.userId) {
+        // Logged-in user
+        const existing = state.items.find(
+          item => item.id === newItem.id && 
+                  item.size === newItem.size && 
+                  item.color === newItem.color
+        );
+
+        if (existing) {
+          existing.quantity += newItem.quantity || 1;
+          existing.totalPrice = existing.price * existing.quantity;
+        } else {
+          const item = {
+            ...newItem,
+            quantity: newItem.quantity || 1,
+            totalPrice: newItem.price * (newItem.quantity || 1),
+          };
+          state.items.push(item);
+        }
+        
+        // User cart update karo
+        state.userCarts[state.userId] = state.items;
+        console.log(`✅ Added to user cart. Total: ${state.items.length}`);
+        
+      } else {
+        // Guest user
+        const existing = state.guestCart.find(
+          item => item.id === newItem.id && 
+                  item.size === newItem.size && 
+                  item.color === newItem.color
+        );
+
+        if (existing) {
+          existing.quantity += newItem.quantity || 1;
+          existing.totalPrice = existing.price * existing.quantity;
+        } else {
+          const item = {
+            ...newItem,
+            quantity: newItem.quantity || 1,
+            totalPrice: newItem.price * (newItem.quantity || 1),
+          };
+          state.guestCart.push(item);
+        }
+        console.log(`✅ Added to guest cart. Total: ${state.guestCart.length}`);
+      }
+    },
+
+    // ✅ Remove from cart
+    removeFromCart: (state, action) => {
+      const itemId = action.payload;
+      console.log("🗑️ Removing item:", itemId);
+
+      if (state.userId) {
+        state.items = state.items.filter(item => item.id !== itemId);
+        state.userCarts[state.userId] = state.items;
+      } else {
+        state.guestCart = state.guestCart.filter(item => item.id !== itemId);
+      }
+      
+      console.log("✅ Item removed");
+    },
+
+    // ✅ Update quantity
+    updateQuantity: (state, action) => {
+      const { id, quantity } = action.payload;
+      console.log(`📝 Updating quantity: ${id} -> ${quantity}`);
+
+      const cart = state.userId ? state.items : state.guestCart;
+      const item = cart.find(i => i.id === id);
+      
+      if (item) {
+        item.quantity = quantity;
+        item.totalPrice = item.price * quantity;
+        
+        if (state.userId) {
+          state.userCarts[state.userId] = state.items;
+        }
+      }
+      
+      console.log("✅ Quantity updated");
+    },
+
+    // ✅ Clear cart
+    clearCart: (state) => {
+      console.log("🧹 Clearing cart");
+      
+      if (state.userId) {
+        state.items = [];
+        state.userCarts[state.userId] = [];
+      } else {
+        state.guestCart = [];
+      }
+    },
+
+    // ✅ Logout
+    logoutUser: (state) => {
+      console.log(`👋 Logging out user: ${state.userId}`);
+      
+      // Items clear karo but userCarts mein save rahega
+      state.items = [];
+      state.userId = null;
+      
+      console.log("✅ Switched to guest mode");
+    },
+  },
+});
+
+export const {
+  addToCart,
+  removeFromCart,
+  updateQuantity,
+  clearCart,
+  setUserId,
+  logoutUser,
+} = cartSlice.actions;
+
+export default cartSlice.reducer;

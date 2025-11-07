@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import LoginModal from "../user/LoginModal";
 import CartDrawer from "../user/CartDrawer";
 import { AuthContext } from "@/context/AuthContext";
-
+import { useSelector } from "react-redux";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,6 +23,18 @@ const Navbar = () => {
       // if not logged in → open login popup
       setIsLoginOpen(true);
     }
+  };
+
+  const { items, guestCart } = useSelector((state) => state.cart);
+
+  // 🧠 Use whichever cart is active
+  const cartItems = items.length > 0 ? items : guestCart;
+
+  // 🔢 Count unique products (ignore quantity)
+  const productCount = cartItems.length;
+
+  const handleCloseMenu = () => {
+    setMenuOpen(false);
   };
 
   return (
@@ -78,9 +90,12 @@ const Navbar = () => {
           </button>
           <button onClick={() => setIsCartOpen(true)} className="relative">
             <ShoppingCart className="w-6 h-6 cursor-pointer hover:text-red-600 transition-colors duration-200" />
-            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1">
-              0
-            </span>
+
+            {productCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
+                {productCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -107,41 +122,82 @@ const Navbar = () => {
             </button>
 
             {/* Menu Links */}
-            <nav className="flex flex-col text-white   items-start space-y-4 mt-6">
-              <a href="/home" className="hover:text-red-600 font-semibold">
+            <nav className="flex flex-col text-white items-start space-y-4 mt-6">
+              <a
+                href="/home"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 Home
               </a>
-              <a href="/shop" className="hover:text-red-600 font-semibold">
+              <a
+                href="/shop"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 Shop
               </a>
-              <a href="/blog" className="hover:text-red-600 font-semibold">
+              <a
+                href="/blog"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 Blog
               </a>
-              <a href="/aboutus" className="hover:text-red-600 font-semibold">
+              <a
+                href="/aboutus"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 About
               </a>
-              <a href="/careers" className="hover:text-red-600 font-semibold">
+              <a
+                href="/careers"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 Careers
               </a>
-              <a href="/faq" className="hover:text-red-600 font-semibold">
+              <a
+                href="/faq"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 FAQ’s
               </a>
-              <a href="/contectus" className="hover:text-red-600 font-semibold">
+              <a
+                href="/contectus"
+                onClick={handleCloseMenu}
+                className="hover:text-red-600 font-semibold"
+              >
                 Contact
               </a>
             </nav>
 
             {/* Center Icons */}
             <div className="flex justify-center items-center w-full gap-8 pt-6 border-t border-gray-300 mt-4">
-              <button onClick={handleUserClick}>
-                <User className="w-6 h-6 hover:text-red-600 text-white transition-colors duration-200" />
+              <button
+                onClick={() => {
+                  handleUserClick();
+                  handleCloseMenu();
+                }}
+              >
+                <User className="w-6 h-6 cursor-pointer hover:text-red-600 text-white transition-colors duration-200" />
               </button>
 
-              <button onClick={() => setIsCartOpen(true)} className="relative">
-                <ShoppingCart className="w-6 h-6 hover:text-red-600 text-white transition-colors duration-200" />
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1">
-                  0
-                </span>
+              <button
+                onClick={() => {
+                  setIsCartOpen(true);
+                  handleCloseMenu();
+                }}
+                className="relative"
+              >
+                <ShoppingCart className="w-6 h-6 cursor-pointer text-white hover:text-red-600 transition-colors duration-200" />
+                {productCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
+                    {productCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>

@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
+import { useSelector, useDispatch } from "react-redux";
+import { setUserId, removeFromCart, logoutUser } from "@/redux/cartslice";
 import {
   User,
   LogOut,
@@ -15,6 +17,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ShoppingBag,
+  X,
 } from "lucide-react";
 
 const Profile = () => {
@@ -22,13 +26,9 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("info");
-
-  // Collapsible states
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
-
-  // Form states
   const [settingsData, setSettingsData] = useState({});
   const [passwordData, setPasswordData] = useState({
     oldPassword: "",
@@ -43,26 +43,45 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Fetch profile
+  const dispatch = useDispatch();
+  
+  // ✅ Redux se cart items
+  const cartState = useSelector((state) => state.cart);
+  const orders = cartState.items || [];
+  
+  console.log("🔍 Profile - Cart State:", cartState);
+  console.log("🔍 Profile - Orders:", orders);
+
+  // ✅ Fetch profile
   useEffect(() => {
     if (!token) return;
-    axios
-      .get("https://velora-website-backend.vercel.app/api/auth/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        setProfile(res.data.user || res.data);
-        setSettingsData(res.data.user || res.data);
-      })
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to fetch profile")
-      );
-  }, [token]);
+
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get(
+          "https://velora-website-backend.vercel.app/api/auth/profile",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const user = res.data.user || res.data;
+        setProfile(user);
+        setSettingsData(user);
+
+        if (user?._id) {
+          console.log(`👤 User logged in: ${user._id}`);
+          dispatch(setUserId(user._id));
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch profile");
+      }
+    };
+
+    fetchProfile();
+  }, [token, dispatch]);
 
   const handleSettingsChange = (e) =>
     setSettingsData({ ...settingsData, [e.target.name]: e.target.value });
 
-  // Update profile
   const handleProfileUpdate = async () => {
     setLoading(true);
     try {
@@ -81,7 +100,6 @@ const Profile = () => {
     }
   };
 
-  // Change Password
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setMessage("❌ New passwords do not match");
@@ -98,7 +116,11 @@ const Profile = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage("✅ Password updated successfully!");
-      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordData({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setShowPassword(false);
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to change password");
@@ -107,7 +129,6 @@ const Profile = () => {
     }
   };
 
-  // Change Email
   const handleEmailChange = async () => {
     setLoading(true);
     try {
@@ -126,14 +147,23 @@ const Profile = () => {
     }
   };
 
-  // Delete Account
+  const handleDeleteOrder = (itemId) => {
+    console.log("🗑️ Deleting item:", itemId);
+    dispatch(removeFromCart(itemId));
+    setMessage("✅ Item removed from cart");
+    setTimeout(() => setMessage(""), 2000);
+  };
+
   const handleDeleteAccount = async () => {
     if (!window.confirm("⚠️ Are you sure you want to delete your account?"))
       return;
     try {
-      await axios.delete("https://velora-website-backend.vercel.app/api/auth/delete-account", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        "https://velora-website-backend.vercel.app/api/auth/delete-account",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      dispatch(logoutUser());
       logout();
       alert("✅ Account deleted successfully");
     } catch (err) {
@@ -141,14 +171,20 @@ const Profile = () => {
     }
   };
 
-  // Logout
   const handleLogout = () => {
     setIsLoggingOut(true);
     setTimeout(() => {
+      console.log("👋 Logging out...");
+      dispatch(logoutUser());
       logout();
       setIsLoggingOut(false);
     }, 1200);
   };
+
+  const orderTotal = orders.reduce(
+    (sum, item) => sum + (item.totalPrice || 0),
+    0
+  );
 
   if (!token)
     return (
@@ -187,6 +223,8 @@ const Profile = () => {
         MY ACCOUNT
       </h1>
 
+    
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Sidebar */}
         <div className="border border-gray-200 rounded-md shadow-sm">
@@ -199,6 +237,16 @@ const Profile = () => {
             }`}
           >
             <User size={18} /> INFORMATION
+          </button>
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`w-full text-left px-5 py-3 font-medium border-b border-gray-200 flex items-center gap-2 ${
+              activeTab === "orders"
+                ? "bg-black text-white"
+                : "hover:bg-gray-100 text-gray-800"
+            }`}
+          >
+            <ShoppingBag size={18} /> MY ORDERS ({orders.length})
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -254,6 +302,86 @@ const Profile = () => {
             </>
           )}
 
+          {activeTab === "orders" && (
+            <>
+              <h2 className="text-xl font-semibold mb-6 tracking-wide text-gray-800 border-b pb-3">
+                MY ORDERS
+              </h2>
+
+              {orders.length === 0 ? (
+                <div className="text-center py-10">
+                  <ShoppingBag
+                    size={48}
+                    className="mx-auto mb-4 text-gray-300"
+                  />
+                  <p className="text-gray-500 text-lg">No orders yet</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Items you add to cart will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((item, idx) => (
+                    <div
+                      key={`${item.id}_${item.size}_${item.color}_${idx}`}
+                      className="flex items-center gap-4 border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                    >
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-20 h-20 object-cover rounded-md"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800">
+                          {item.name}
+                        </h3>
+                        {item.size && (
+                          <p className="text-sm text-gray-500">
+                            Size: {item.size}
+                          </p>
+                        )}
+                        {item.color && (
+                          <p className="text-sm text-gray-500">
+                            Color: {item.color}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-600 mt-1">
+                          Quantity: {item.quantity}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-800">
+                          ₹{item.totalPrice?.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          ₹{item.price} each
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteOrder(item.id)}
+                        className="ml-2 text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-md transition"
+                        title="Remove item"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="border-t pt-4 mt-6">
+                    <div className="flex justify-between items-center text-lg font-semibold">
+                      <span>Total Amount:</span>
+                      <span className="text-black">
+                        ₹{orderTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {activeTab === "settings" && (
             <div className="space-y-8 text-gray-700">
               <h2 className="text-xl font-semibold tracking-wide border-b pb-3">
@@ -266,7 +394,6 @@ const Profile = () => {
                 </div>
               )}
 
-              {/* Collapsible Edit Profile */}
               <div>
                 <button
                   onClick={() => setShowEdit(!showEdit)}
@@ -293,7 +420,9 @@ const Profile = () => {
                           key={name}
                           type="text"
                           name={name}
-                          placeholder={name.charAt(0).toUpperCase() + name.slice(1)}
+                          placeholder={
+                            name.charAt(0).toUpperCase() + name.slice(1)
+                          }
                           value={settingsData[name] || ""}
                           onChange={handleSettingsChange}
                           className="border border-gray-300 rounded-md px-3 py-2 focus:ring-1 focus:ring-black focus:outline-none"
@@ -319,7 +448,6 @@ const Profile = () => {
                 )}
               </div>
 
-              {/* Collapsible Password */}
               <div>
                 <button
                   onClick={() => setShowPassword(!showPassword)}
@@ -390,7 +518,6 @@ const Profile = () => {
                 )}
               </div>
 
-              {/* Collapsible Email */}
               <div>
                 <button
                   onClick={() => setShowEmail(!showEmail)}
@@ -449,7 +576,6 @@ const Profile = () => {
                 )}
               </div>
 
-              {/* Delete Account */}
               <div className="pt-6 border-t border-gray-200">
                 <h3 className="font-semibold flex items-center gap-2 mb-3 text-red-600">
                   <Trash2 size={18} /> Delete Account

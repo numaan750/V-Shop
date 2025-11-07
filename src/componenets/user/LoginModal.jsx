@@ -3,6 +3,8 @@ import React, { useState, useEffect, useContext } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setUserId } from "@/redux/cartslice";
 import { AuthContext } from "@/context/AuthContext";
 
 const API_URL = "https://velora-website-backend.vercel.app/api/auth";
@@ -10,11 +12,10 @@ const API_URL = "https://velora-website-backend.vercel.app/api/auth";
 const LoginModal = ({ isOpen, onClose }) => {
   const [show, setShow] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
-  const [isLostPassword, setIsLostPassword] = useState(false); // 👈 new state
+  const [isLostPassword, setIsLostPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // lost password states
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -32,48 +33,44 @@ const LoginModal = ({ isOpen, onClose }) => {
   });
 
   const { login } = useContext(AuthContext);
+  const dispatch = useDispatch();
   const router = useRouter();
 
-useEffect(() => {
-  if (isOpen) setShow(true);
-  else {
-    const timer = setTimeout(() => setShow(false), 300);
-    return () => clearTimeout(timer);
-  }
-}, [isOpen]);
+  useEffect(() => {
+    if (isOpen) setShow(true);
+    else {
+      const timer = setTimeout(() => setShow(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
-// ✅ ADD THIS BELOW
-useEffect(() => {
-  if (isOpen) {
-    setFormData({
-      username: "",
-      email: "",
-      password: "",
-      country: "",
-      city: "",
-      postalcode: "",
-      address: "",
-      phone: "",
-    });
-    setEmail("");
-    setCode("");
-    setNewPassword("");
-    setMessage("");
-    setStep(1);
-    setIsLostPassword(false);
-    setIsSignup(false);
-  }
-}, [isOpen]);
-
-if (!isOpen && !show) return null;
-
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        country: "",
+        city: "",
+        postalcode: "",
+        address: "",
+        phone: "",
+      });
+      setEmail("");
+      setCode("");
+      setNewPassword("");
+      setMessage("");
+      setStep(1);
+      setIsLostPassword(false);
+      setIsSignup(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen && !show) return null;
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // ✅ Signup
   const handleSignup = async () => {
     try {
       const res = await axios.post(`${API_URL}/register`, formData);
@@ -84,22 +81,31 @@ if (!isOpen && !show) return null;
     }
   };
 
-  // ✅ Login
   const handleLogin = async () => {
     try {
       const res = await axios.post(`${API_URL}/login`, {
         email: formData.email,
         password: formData.password,
       });
-      login(res.data.token, res.data.user);
+      
+      const userData = res.data.user;
+      
+      // ✅ Context mein login
+      login(res.data.token, userData);
+      
+      // ✅ Redux mein user ID set karo (guest cart automatically merge hoga)
+      if (userData._id) {
+        console.log(`🔑 Login successful. Setting user ID: ${userData._id}`);
+        dispatch(setUserId(userData._id));
+      }
+      
       onClose();
-      router.push("/profile"); // ✅ redirect to profile after login
+      router.push("/profile");
     } catch (err) {
       setMessage(err.response?.data?.message || "Login failed!");
     }
   };
 
-  // 🔐 Lost Password Handlers
   const handleSendCode = async () => {
     if (!email) return setMessage("❌ Please enter your email");
     setLoading(true);
@@ -139,7 +145,6 @@ if (!isOpen && !show) return null;
       });
       setMessage(res.data.message || "✅ Password reset successful!");
 
-      // ✅ after success, return to login form automatically
       setTimeout(() => {
         setIsLostPassword(false);
         setStep(1);
@@ -177,7 +182,6 @@ if (!isOpen && !show) return null;
           </p>
         )}
 
-        {/* 🔽 Lost Password Flow */}
         {isLostPassword ? (
           <>
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
@@ -250,7 +254,6 @@ if (!isOpen && !show) return null;
           </>
         ) : !isSignup ? (
           <>
-            {/* 🔐 Login View */}
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Log In</h2>
             <input
               type="email"
@@ -270,7 +273,7 @@ if (!isOpen && !show) return null;
             />
 
             <p
-              onClick={() => setIsLostPassword(true)} // 👈 now opens forgot password flow
+              onClick={() => setIsLostPassword(true)}
               className="text-sm text-[#f0243c] text-right cursor-pointer hover:underline mb-4"
             >
               Lost your password?
@@ -278,13 +281,13 @@ if (!isOpen && !show) return null;
 
             <button
               onClick={handleLogin}
-              className="w-full bg-[#f0243c] text-white py-3 rounded-full hover:bg-[#ff334b]"
+              className="w-full cursor-pointer bg-[#f0243c] text-white py-3 rounded-full hover:bg-[#ff334b]"
             >
               LOGIN
             </button>
 
             <p className="text-center mt-4 text-gray-700">
-              Don’t have an account?{" "}
+              Don't have an account?{" "}
               <span
                 onClick={() => setIsSignup(true)}
                 className="text-[#f0243c] font-semibold cursor-pointer"
@@ -295,7 +298,6 @@ if (!isOpen && !show) return null;
           </>
         ) : (
           <>
-            {/* 🧾 Signup View */}
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               Create Account
             </h2>
@@ -367,7 +369,7 @@ if (!isOpen && !show) return null;
 
             <button
               onClick={handleSignup}
-              className="w-full bg-[#f0243c] text-white py-3 rounded-full hover:bg-[#ff334b]"
+              className="w-full bg-[#f0243c] cursor-pointer text-white py-3 rounded-full hover:bg-[#ff334b]"
             >
               SIGN UP
             </button>

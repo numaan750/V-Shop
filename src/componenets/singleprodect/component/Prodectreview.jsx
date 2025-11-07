@@ -2,6 +2,9 @@
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Relatedprodects from "./Relatedprodects";
+import { useDispatch } from "react-redux";
+import CartDrawer from "@/componenets/user/CartDrawer";
+import { addToCart } from "@/redux/cartslice";
 
 const Prodectreview = ({ product }) => {
   // const product = {
@@ -30,7 +33,7 @@ const Prodectreview = ({ product }) => {
   const [mainImage, setMainImage] = useState(product?.images[0]);
 
   const [selectedSize, setSelectedSize] = useState(null);
-const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
   const [zoom, setZoom] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
   const imgRef = useRef();
@@ -38,6 +41,9 @@ const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
   const [fullscreen, setFullscreen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const dispatch = useDispatch();
+
   const router = useRouter();
 
   // 🧠 Prevent crash if product data not loaded yet
@@ -50,7 +56,7 @@ const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
   }
 
   const price = selectedSize
-? product?.sizes?.find((s) => s.label === selectedSize)?.price
+    ? product?.sizes?.find((s) => s.label === selectedSize)?.price
     : "200 – 250";
 
   const handleMouseMove = (e) => {
@@ -65,6 +71,9 @@ const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
   const [hover, setHover] = useState(0);
 
   return (
+    <>
+    <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
     <div className="py-20 bg-white">
       <div className="Mycontainer grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* LEFT SIDE: Main Image + Thumbnails */}
@@ -314,6 +323,35 @@ const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
 
               <button
                 disabled={!selectedSize}
+                onClick={() => {
+                  const uniqueId = `${product.id}_${selectedSize}_${
+                    selectedColor || "default"
+                  }`;
+                  const item = {
+                    id: uniqueId,
+                    productId: product.id,
+                    name: product.title,
+                    price: selectedSize
+                      ? product.sizes.find((s) => s.label === selectedSize)
+                          ?.price
+                      : 200,
+                    quantity,
+                    size: selectedSize,
+                    color: selectedColor,
+                    image: mainImage,
+                    totalPrice:
+                      (selectedSize
+                        ? product.sizes.find((s) => s.label === selectedSize)
+                            ?.price
+                        : 200) * quantity,
+                  };
+
+                  dispatch(addToCart(item));
+                  setQuantity(1);
+
+                  // 🧩 Instead of alert, open the cart drawer
+                  setIsCartOpen(true);
+                }}
                 className={`px-6 py-3 rounded-full text-white font-semibold transition ${
                   selectedSize
                     ? "bg-[#f0243c] hover:bg-[#ff334b]"
@@ -548,6 +586,7 @@ const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]?.hex);
       </div>
       <Relatedprodects category={product?.category} />
     </div>
+    </>
   );
 };
 
