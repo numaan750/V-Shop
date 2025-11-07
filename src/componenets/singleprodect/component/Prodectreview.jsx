@@ -161,7 +161,7 @@ const Prodectreview = ({ product }) => {
               </button>
             </div>
 
-            {/* ◀ Arrow Left */}
+            {/* ≪ Arrow Left */}
             <button
               className="absolute left-8 text-white text-3xl font-bold hover:text-gray-300"
               onClick={() =>
@@ -170,7 +170,7 @@ const Prodectreview = ({ product }) => {
                 )
               }
             >
-              ◀
+              ≪
             </button>
 
             {/* 🖼 Image */}
@@ -184,7 +184,7 @@ const Prodectreview = ({ product }) => {
               }`}
             />
 
-            {/* ▶ Arrow Right */}
+            {/* ≫ Arrow Right */}
             <button
               className="absolute right-8 text-white text-3xl font-bold hover:text-gray-300"
               onClick={() =>
@@ -193,7 +193,7 @@ const Prodectreview = ({ product }) => {
                 )
               }
             >
-              ▶
+              ≫
             </button>
           </div>
         )}
