@@ -163,7 +163,7 @@ const Prodectreview = ({ product }) => {
 
             {/* ≪ Arrow Left */}
             <button
-              className="absolute left-8 text-white text-3xl font-bold hover:text-gray-300"
+              className="absolute left-8 cursor-pointer text-white text-3xl font-bold hover:text-gray-300"
               onClick={() =>
                 setCurrentIndex((prev) =>
                   prev === 0 ? product?.images?.length - 1 : prev - 1
@@ -186,7 +186,7 @@ const Prodectreview = ({ product }) => {
 
             {/* ≫ Arrow Right */}
             <button
-              className="absolute right-8 text-white text-3xl font-bold hover:text-gray-300"
+              className="absolute right-8 cursor-pointer text-white text-3xl font-bold hover:text-gray-300"
               onClick={() =>
                 setCurrentIndex((prev) =>
                   prev === product?.images?.length - 1 ? 0 : prev + 1
