@@ -25,12 +25,18 @@ const Navbar = () => {
     }
   };
 
-  const { items, guestCart } = useSelector((state) => state.cart);
+  // ✅ Get cart items correctly
+  const { items, guestCart, userId } = useSelector((state) => state.cart);
 
-  // 🧠 Use whichever cart is active
-  const cartItems = items.length > 0 ? items : guestCart;
+  // 🧠 Decide active cart
+  const cartItems = userId ? items : guestCart;
 
-  // 🔢 Count unique products (ignore quantity)
+  // const { items, guestCart } = useSelector((state) => state.cart);
+
+  // // 🧠 Use whichever cart is active
+  // const cartItems = items.length > 0 ? items : guestCart;
+
+  // // 🔢 Count unique products (ignore quantity)
   const productCount = cartItems.length;
 
   const handleCloseMenu = () => {
@@ -90,10 +96,9 @@ const Navbar = () => {
           </button>
           <button onClick={() => setIsCartOpen(true)} className="relative">
             <ShoppingCart className="w-6 h-6 cursor-pointer hover:text-red-600 transition-colors duration-200" />
-
-            {productCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
-                {productCount}
+            {cartItems?.length > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full font-light tracking-wider border border-black/20 shadow-lg">
+                {cartItems.length}
               </span>
             )}
           </button>

@@ -46,7 +46,7 @@ const cartSlice = createSlice({
         state.items = state.userCarts[userId];
         
         // Guest cart clear karo
-        state.guestCart = [];
+        // state.guestCart = [];
         
         console.log(`✅ Merged! User cart now has ${state.items.length} items`);
       } else {
@@ -160,7 +160,7 @@ const cartSlice = createSlice({
       console.log(`👋 Logging out user: ${state.userId}`);
       
       // Items clear karo but userCarts mein save rahega
-      state.items = [];
+      // state.items = [];
       state.userId = null;
       
       console.log("✅ Switched to guest mode");
