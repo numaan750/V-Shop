@@ -1,29 +1,102 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  updateQuantity,
-  removeFromCart,
-  clearCart,
-} from "@/redux/cartslice";
+import { updateQuantity, removeFromCart, clearCart } from "@/redux/cartslice";
 import { useRouter } from "next/navigation";
+import axios from "axios"; // YEH ADD KAREIN
+import toast from "react-hot-toast"; // YEH BHI ADD KAREIN
 
 const AddToCart = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-  
-  // ✅ Redux cart state
-  const cartState = useSelector((state) => state.cart);
-  
-  // ✅ Guest ya User cart ke according items
-  const cartItems = cartState.userId 
-    ? cartState.items 
-    : cartState.guestCart;
 
-  console.log("🛒 OrderCart - User ID:", cartState.userId);
-  console.log("🛒 OrderCart - Cart Items:", cartItems);
+  const cartState = useSelector((state) => state.cart);
+  const cartItems = cartState.userId ? cartState.items : cartState.guestCart;
 
   const [step, setStep] = useState("cart");
+  const [shippingMethods, setShippingMethods] = useState([]);
+  const [selectedShipping, setSelectedShipping] = useState(null);
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [showShippingMethods, setShowShippingMethods] = useState(false);
+  const [isCODSelected, setIsCODSelected] = useState(false);
+  const [formError, setFormError] = useState("");
+  const userId = useSelector((state) => state.cart.userId);
+
+
+  // COD charges (you can modify this value)
+  const COD_CHARGES = 50;
+
+  // Form Data State
+  const [formData, setFormData] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    country: "India",
+    houseAddress: "",
+    apartment: "",
+    city: "",
+    phone: "",
+  });
+
+  // Backend URL
+  const backendUrl = "https://velora-website-backend.vercel.app/api";
+
+  // Fetch shipping methods
+  const fetchShippingMethods = async () => {
+    setLoadingShipping(true);
+    try {
+      const res = await fetch(`${backendUrl}/shippingmodel`);
+      const data = await res.json();
+      const activeMethods = data.filter((method) => method.isActive);
+      setShippingMethods(activeMethods);
+    } catch (err) {
+      console.error("Error fetching shipping methods:", err);
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Validate form and show shipping methods
+  const handleContinueToShipping = () => {
+    // Validate required fields
+    if (
+      !formData.email ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.houseAddress ||
+      !formData.city ||
+      !formData.phone
+    ) {
+      setFormError("Please fill up the form first");
+      return;
+    }
+
+    // Clear error and show shipping methods
+    setFormError("");
+    setShowShippingMethods(true);
+    fetchShippingMethods();
+  };
+
+  // Handle COD checkbox toggle
+  const handleCODToggle = (e) => {
+    const isChecked = e.target.checked;
+    setIsCODSelected(isChecked);
+
+    // If COD is selected, hide shipping methods
+    if (isChecked) {
+      setShowShippingMethods(false);
+      setSelectedShipping(null);
+    }
+  };
 
   const suggestedProducts = [
     {
@@ -64,6 +137,105 @@ const AddToCart = () => {
     (acc, item) => acc + item.price * item.quantity,
     0
   );
+
+  const shippingPrice = selectedShipping ? selectedShipping.price : 0;
+  const codCharges = isCODSelected ? COD_CHARGES : 0;
+  const total = subtotal + shippingPrice + codCharges;
+
+  // Handle Place Order - Save to Backend
+const handlePlaceOrder = async () => {
+  try {
+    // ✅ Validation - Check if user is logged in
+    if (!userId) {
+      toast.error("❌ Please login first to place order");
+      router.push("/login"); // Redirect to login
+      return;
+    }
+
+    // ✅ Validate cart
+    if (cartItems.length === 0) {
+      toast.error("❌ Your cart is empty");
+      return;
+    }
+
+    // ✅ Validate form fields
+    if (
+      !formData.email ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.houseAddress ||
+      !formData.city ||
+      !formData.phone
+    ) {
+      toast.error("❌ Please fill all required fields");
+      return;
+    }
+
+    // ✅ Validate shipping or COD selection
+    if (!selectedShipping && !isCODSelected) {
+      toast.error("❌ Please select a shipping method or COD");
+      return;
+    }
+
+    console.log("📤 Preparing checkout data...");
+    console.log("User ID:", userId);
+    console.log("Form Data:", formData);
+    console.log("Cart Items:", cartItems);
+
+    // ✅ Prepare checkout data WITH userId (fixed field names)
+    const checkoutData = {
+      userId: userId, // 🔥 Logged-in user ki ID
+      username: formData.firstName, // Ya koi username field ho
+      email: formData.email,
+      firstname: formData.firstName, // ✅ Backend ke hisaab se
+      lastname: formData.lastName,   // ✅ Backend ke hisaab se
+      country: formData.country,
+      city: formData.city,
+      address: formData.houseAddress, // ✅ Backend expects "address"
+      phone: formData.phone,
+      apartment: formData.apartment || "",
+      products: cartItems.map((item) => ({
+        img: item.image || item.img || "/placeholder.jpg",
+        title: item.name || item.title || "Unknown Product",
+        price: item.price.toString(),
+        quantity: item.quantity.toString(),
+      })),
+      status: "pending",
+    };
+
+    console.log("📤 Sending checkout data:", checkoutData);
+
+    // ✅ Send to backend
+    const res = await axios.post(
+      `${backendUrl}/checkoutmodel`,
+      checkoutData,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    console.log("✅ Order created successfully:", res.data);
+    toast.success("✅ Order placed successfully!");
+
+    // ✅ Move to complete step
+    setStep("complete");
+
+    // ✅ Optional: Clear cart after successful order
+    // dispatch(clearCart());
+  } catch (err) {
+    console.error("❌ Order creation error:", err.response?.data || err.message);
+    
+    // Better error handling
+    if (err.response?.status === 400) {
+      toast.error(err.response?.data?.message || "Invalid order data");
+    } else if (err.response?.status === 401) {
+      toast.error("Please login to place order");
+      router.push("/login");
+    } else {
+      toast.error("Failed to place order. Please try again.");
+    }
+  }
+};
 
   return (
     <div className="py-15">
@@ -111,7 +283,9 @@ const AddToCart = () => {
             <div className="flex-1 bg-white p-5">
               {cartItems.length === 0 ? (
                 <div className="text-center py-20">
-                  <p className="text-gray-500 text-xl mb-4">Your cart is empty</p>
+                  <p className="text-gray-500 text-xl mb-4">
+                    Your cart is empty
+                  </p>
                   <button
                     onClick={() => router.push("/shop")}
                     className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full"
@@ -183,7 +357,9 @@ const AddToCart = () => {
 
                   {/* Suggested Products */}
                   <div className="mt-5 bg-rose-50 p-3 rounded">
-                    <h2 className="font-bold mb-2">You may be interested in…</h2>
+                    <h2 className="font-bold mb-2">
+                      You may be interested in…
+                    </h2>
                     <div className="flex flex-col gap-3">
                       {suggestedProducts.map((prod) => (
                         <div
@@ -291,6 +467,9 @@ const AddToCart = () => {
                 </h2>
                 <input
                   type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
                   placeholder="Username or Email Address *"
                   className="w-full border rounded p-2 mt-3 hover:border-[#e67070] focus:outline-none transition duration-200"
                 />
@@ -303,96 +482,189 @@ const AddToCart = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input
                     type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
                     placeholder="First name *"
                     className="border rounded border-gray-300 p-2 mb-3"
                   />
                   <input
                     type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
                     placeholder="Last name *"
                     className="border rounded border-gray-300 p-2 mb-3"
                   />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Company name"
-                  className="border rounded border-gray-300 p-2 w-full mt-3 mb-3"
-                />
-                <select className="border rounded border-gray-300 p-2 w-full mt-3">
+
+                <select
+                  name="country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  className="border rounded border-gray-300 p-2 w-full mt-3"
+                >
                   <option>India</option>
+                  <option>Pakistan</option>
+                  <option>Bangladesh</option>
                 </select>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                   <input
                     type="text"
+                    name="houseAddress"
+                    value={formData.houseAddress}
+                    onChange={handleInputChange}
                     placeholder="House number and street name *"
                     className="border rounded border-gray-300 p-2 mt-3"
                   />
                   <input
                     type="text"
+                    name="apartment"
+                    value={formData.apartment}
+                    onChange={handleInputChange}
                     placeholder="Apartment, suite, unit, etc. (optional)"
                     className="border rounded border-gray-300 p-2 mt-3"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                  <input
-                    type="text"
-                    placeholder="Town / City *"
-                    className="border rounded border-gray-300 p-2 mt-3"
-                  />
-                  <select className="border rounded border-gray-300 p-2 mt-3">
-                    <option className="mt-3">Maharashtra</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="PIN Code *"
-                    className="border rounded border-gray-300 p-2 mt-3"
-                  />
-                </div>
+
                 <input
                   type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="Town / City *"
+                  className="border rounded border-gray-300 p-2 w-full mt-3"
+                />
+
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
                   placeholder="Phone *"
                   className="border rounded border-gray-300 p-2 w-full mt-5"
                 />
+
+                {formError && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-3">
+                    {formError}
+                  </div>
+                )}
+
+                {!showShippingMethods && !isCODSelected && (
+                  <button
+                    onClick={handleContinueToShipping}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-full font-semibold transition mt-5"
+                  >
+                    Continue to Shipping Methods
+                  </button>
+                )}
               </div>
 
-              <div>
-                <h2 className="inline-block text-4xl font-bold mb-4 pb-5 border-b-2 border-[#d1d1d1]">
-                  Additional information
-                </h2>
-                <textarea
-                  placeholder="Notes about your order, e.g. special notes for delivery."
-                  className="border border-gray-300 rounded p-2 w-full h-20"
-                />
-                <p className="mt-5 text-lg text-gray-500">Have a coupon?</p>
-              </div>
+              {/* Shipping Methods Section */}
+              {showShippingMethods && !isCODSelected && (
+                <div>
+                  <h2 className="inline-block text-4xl font-bold mb-7 pb-5 border-b-2 border-[#d1d1d1]">
+                    Shipping Methods
+                  </h2>
 
-              <div className="mt-10">
-                <h2 className="text-4xl font-bold mb-10">Payment</h2>
-                <div className="pl-15 max-w-3xl">
-                  <div className="border-t border-black bg-gray-50 p-4">
-                    <p className="text-gray-700 text-xl leading-relaxed flex items-start">
-                      <input
-                        type="checkbox"
-                        className="mr-3 mt-1 accent-black cursor-pointer"
-                      />
-                      Sorry, it seems that there are no available payment
-                      methods. Please contact us if you require assistance or
-                      wish to make alternate arrangements.
+                  {loadingShipping ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-3 border-red-500 border-t-transparent mx-auto"></div>
+                      <p className="text-gray-600 mt-3 text-sm">
+                        Loading shipping methods...
+                      </p>
+                    </div>
+                  ) : shippingMethods.length === 0 ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <p className="text-gray-600">
+                        No shipping methods available
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {shippingMethods.map((method) => (
+                        <div
+                          key={method._id}
+                          onClick={() => setSelectedShipping(method)}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                            selectedShipping?._id === method._id
+                              ? "border-red-500 bg-red-50"
+                              : "border-gray-300 hover:border-gray-400"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="radio"
+                                name="shipping"
+                                checked={selectedShipping?._id === method._id}
+                                onChange={() => setSelectedShipping(method)}
+                                className="mt-1 accent-red-500"
+                              />
+                              <div>
+                                <h3 className="font-semibold text-lg text-gray-900">
+                                  {method.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {method.description}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="font-bold text-lg text-gray-900">
+                              ₹{method.price.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(showShippingMethods || isCODSelected) && (
+                <>
+                  <div className="mt-10">
+                    <h2 className="text-4xl font-bold mb-10">Payment</h2>
+                    <div className="pl-15 max-w-3xl">
+                      <div className="border-t border-black bg-gray-50 p-4">
+                        <p className="text-gray-700 text-xl leading-relaxed flex items-start">
+                          <input
+                            type="checkbox"
+                            checked={isCODSelected}
+                            onChange={handleCODToggle}
+                            className="mr-3 mt-1 accent-black cursor-pointer"
+                          />
+                          Cash on Delivery (COD) - Pay when you receive your
+                          order
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-5 text-lg text-gray-500 pl-15">
+                      Have a coupon?
                     </p>
                   </div>
-                </div>
-              </div>
 
-              <div className="pl-15 max-w-3xl">
-                <button
-                  onClick={() => setStep("complete")}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-full font-semibold transition mt-4"
-                >
-                  PLACE ORDER ₹{subtotal.toFixed(2)}
-                </button>
-              </div>
+                  <div className="pl-15 max-w-3xl">
+                    <button
+                      onClick={handlePlaceOrder}
+                      className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-full font-semibold transition mt-4"
+                    >
+                      PLACE ORDER ₹{total.toFixed(2)}
+                    </button>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-center mt-5">
                 <button
-                  onClick={() => setStep("cart")}
+                  onClick={() => {
+                    setStep("cart");
+                    setShowShippingMethods(false);
+                    setIsCODSelected(false);
+                    setFormError("");
+                  }}
                   className="text-sm text-gray-600 underline cursor-pointer hover:text-gray-800"
                 >
                   &lt; Back to Cart
@@ -438,9 +710,30 @@ const AddToCart = () => {
                     ₹{subtotal.toFixed(2)}
                   </span>
                 </div>
+
+                {selectedShipping && (
+                  <div className="flex justify-between py-3 border-b-2 pb-5 border-gray-300">
+                    <span className="text-gray-700">
+                      Shipping ({selectedShipping.name})
+                    </span>
+                    <span className="text-gray-900 font-medium">
+                      ₹{selectedShipping.price.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                {isCODSelected && (
+                  <div className="flex justify-between py-3 border-b-2 pb-5 border-gray-300">
+                    <span className="text-gray-700">COD Charges</span>
+                    <span className="text-gray-900 font-medium">
+                      ₹{COD_CHARGES.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between py-3 font-bold">
                   <span>Total</span>
-                  <span>₹{subtotal.toFixed(2)}</span>
+                  <span>₹{total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -471,9 +764,7 @@ const AddToCart = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 text-sm uppercase">Total</p>
-                  <p className="text-lg font-semibold">
-                    ₹{subtotal.toFixed(2)}
-                  </p>
+                  <p className="text-lg font-semibold">₹{total.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 text-sm uppercase">
@@ -502,10 +793,28 @@ const AddToCart = () => {
                       </td>
                     </tr>
                   ))}
+                  {selectedShipping && (
+                    <tr className="border-t">
+                      <td className="py-2 px-4">
+                        Shipping ({selectedShipping.name})
+                      </td>
+                      <td className="py-2 px-4">-</td>
+                      <td className="py-2 px-4">
+                        ₹{selectedShipping.price.toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                  {isCODSelected && (
+                    <tr className="border-t">
+                      <td className="py-2 px-4">COD Charges</td>
+                      <td className="py-2 px-4">-</td>
+                      <td className="py-2 px-4">₹{COD_CHARGES.toFixed(2)}</td>
+                    </tr>
+                  )}
                   <tr className="border-t font-bold">
                     <td className="py-3 px-4">Total</td>
                     <td></td>
-                    <td className="py-3 px-4">₹{subtotal.toFixed(2)}</td>
+                    <td className="py-3 px-4">₹{total.toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -514,6 +823,20 @@ const AddToCart = () => {
             <button
               onClick={() => {
                 dispatch(clearCart());
+                setSelectedShipping(null);
+                setShowShippingMethods(false);
+                setIsCODSelected(false);
+                setFormError("");
+                setFormData({
+                  email: "",
+                  firstName: "",
+                  lastName: "",
+                  country: "India",
+                  houseAddress: "",
+                  apartment: "",
+                  city: "",
+                  phone: "",
+                });
                 router.push("/home");
               }}
               className="mt-8 bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full font-semibold transition"

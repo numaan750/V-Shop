@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setUserId } from "@/redux/cartslice";
 import { AuthContext } from "@/context/AuthContext";
+import toast from "react-hot-toast";
+
 
 const API_URL = "https://velora-website-backend.vercel.app/api/auth";
 
@@ -74,10 +76,10 @@ const LoginModal = ({ isOpen, onClose }) => {
   const handleSignup = async () => {
     try {
       const res = await axios.post(`${API_URL}/register`, formData);
-      alert("✅ Signup successful! Please login now.");
+      toast.success("✅ Signup successful! Please login now.");
       setIsSignup(false);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Signup failed!");
+      toast.error(err.response?.data?.message || "Signup failed!");
     }
   };
 
@@ -87,22 +89,27 @@ const LoginModal = ({ isOpen, onClose }) => {
         email: formData.email,
         password: formData.password,
       });
-      
+
       const userData = res.data.user;
-      
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      console.log("Full Response:", res.data); // YEH ADD KAREIN
+      console.log("Full User Data:", userData);
+
       // ✅ Context mein login
       login(res.data.token, userData);
-      
+
       // ✅ Redux mein user ID set karo (guest cart automatically merge hoga)
       if (userData._id) {
         console.log(`🔑 Login successful. Setting user ID: ${userData._id}`);
         dispatch(setUserId(userData._id));
       }
-      
+
+      toast.success("✅ Logged in successfully!");
       onClose();
       router.push("/profile");
     } catch (err) {
-      setMessage(err.response?.data?.message || "Login failed!");
+      toast.error(err.response?.data?.message || "Login failed!");
     }
   };
 
@@ -111,9 +118,11 @@ const LoginModal = ({ isOpen, onClose }) => {
     setLoading(true);
     try {
       const res = await axios.post(`${API_URL}/send-reset-code`, { email });
-      setMessage(res.data.message || "✅ Code sent to your email");
+      toast.success("Reset code sent successfully!");
+
       setStep(2);
     } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send code");
       setMessage(err.response?.data?.message || "Error sending code");
     } finally {
       setLoading(false);
@@ -124,10 +133,15 @@ const LoginModal = ({ isOpen, onClose }) => {
     if (!code) return setMessage("❌ Please enter the code");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/verify-reset-code`, { email, code });
-      setMessage(res.data.message || "✅ Code verified");
+      const res = await axios.post(`${API_URL}/verify-reset-code`, {
+        email,
+        code,
+      });
+      toast.success("Code verified successfully!");
+
       setStep(3);
     } catch (err) {
+      toast.error(err.response?.data?.message || "Invalid or expired code");
       setMessage(err.response?.data?.message || "Invalid or expired code");
     } finally {
       setLoading(false);
@@ -143,7 +157,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         code,
         newPassword,
       });
-      setMessage(res.data.message || "✅ Password reset successful!");
+      toast.success("Password reset successful!");
 
       setTimeout(() => {
         setIsLostPassword(false);
@@ -154,6 +168,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         setMessage("");
       }, 1500);
     } catch (err) {
+      toast.error(err.response?.data?.message || "Error resetting password");
       setMessage(err.response?.data?.message || "Error resetting password");
     } finally {
       setLoading(false);

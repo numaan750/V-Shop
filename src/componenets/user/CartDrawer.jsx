@@ -83,16 +83,20 @@ const CartDrawer = ({ isOpen, onClose }) => {
             <div className="flex-1 overflow-y-auto px-6 py-4">
               {cartItems.map((item, index) => (
                 <div
-                  key={`${item.id}_${item.size}_${item.color}_${index}`}
+                  key={`${item.id}_${index}`}
                   className="flex items-center justify-between mb-4 border-b pb-3"
                 >
                   <div className="flex items-center gap-3">
+                    {/* ✅ UPDATED - Image with error handling */}
                     <Image
-                      src={item.image}
+                      src={item.image || '/placeholder-image.jpg'}
                       alt={item.name}
                       width={60}
                       height={60}
-                      className="rounded-md"
+                      className="rounded-md object-cover"
+                      onError={(e) => {
+                        e.target.src = '/placeholder-image.jpg';
+                      }}
                     />
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">
@@ -101,14 +105,21 @@ const CartDrawer = ({ isOpen, onClose }) => {
                       {item.size && (
                         <p className="text-gray-600 text-xs">Size: {item.size}</p>
                       )}
+                      {/* ✅ UPDATED - Color display with circle */}
                       {item.color && (
-                        <p className="text-gray-600 text-xs">Color: {item.color}</p>
+                        <div className="flex items-center gap-1 text-xs text-gray-600">
+                          <span>Color:</span>
+                          <div
+                            className="w-3 h-3 rounded-full border border-gray-300"
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                        </div>
                       )}
 
                       {/* Quantity Controls */}
                       <div className="flex items-center border mt-1 w-fit">
                         <button
-                          className="px-2 py-1 text-sm"
+                          className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={item.quantity <= 1}
                           onClick={() =>
                             dispatch(
@@ -139,15 +150,19 @@ const CartDrawer = ({ isOpen, onClose }) => {
                     </div>
                   </div>
 
+                  {/* ✅ UPDATED - Better price display */}
                   <div className="text-right">
                     <p className="text-gray-800 font-medium text-sm">
-                      ₹{item.price}
+                      ₹{(item.price * item.quantity).toFixed(2)}
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      ₹{item.price} × {item.quantity}
                     </p>
                     <button
                       className="text-gray-400 cursor-pointer hover:text-red-600 text-xs mt-1"
                       onClick={() => dispatch(removeFromCart(item.id))}
                     >
-                      ✕
+                      ✕ Remove
                     </button>
                   </div>
                 </div>
@@ -166,6 +181,14 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 className="w-full bg-[#f0243c] text-white py-3 rounded-full font-semibold hover:bg-[#ff334b] transition mb-2"
               >
                 VIEW CART
+              </button>
+
+              {/* ✅ NEW - Continue Shopping button */}
+              <button
+                onClick={() => handleNavigate("/shop")}
+                className="w-full bg-white text-gray-700 py-3 rounded-full font-semibold border border-gray-300 hover:bg-gray-50 transition"
+              >
+                CONTINUE SHOPPING
               </button>
             </div>
           </div>

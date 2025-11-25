@@ -19,7 +19,11 @@ import {
   ChevronUp,
   ShoppingBag,
   X,
+  Package,
+  Eye,
+  XCircle,
 } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
 const Profile = () => {
   const { token, logout } = useContext(AuthContext);
@@ -43,41 +47,141 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const [checkoutOrders, setCheckoutOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+
   const dispatch = useDispatch();
-  
-  // ✅ Redux se cart items
+
+  // Redux cart items
   const cartState = useSelector((state) => state.cart);
   const orders = cartState.items || [];
-  
-  console.log("🔍 Profile - Cart State:", cartState);
-  console.log("🔍 Profile - Orders:", orders);
 
-  // ✅ Fetch profile
+  // ✅ Dynamic backend URL - works in both development and production
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "https://velora-website-backend.vercel.app/api";
+
+  // Fetch profile
   useEffect(() => {
-    if (!token) return;
+    const storedToken = localStorage.getItem("token");
+    const authToken = token || storedToken;
 
-    const fetchProfile = async () => {
-      try {
-        const res = await axios.get(
-          "https://velora-website-backend.vercel.app/api/auth/profile",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+    if (!authToken) {
+      console.warn("⚠️ No token found — user not logged in.");
+      return;
+    }
 
-        const user = res.data.user || res.data;
-        setProfile(user);
-        setSettingsData(user);
+const fetchProfile = async () => {
+  try {
+    const storedToken = localStorage.getItem("token");
+    const authToken = token || storedToken;
 
-        if (user?._id) {
-          console.log(`👤 User logged in: ${user._id}`);
-          dispatch(setUserId(user._id));
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to fetch profile");
+    if (!authToken) return;
+
+    const res = await axios.get(
+      "https://velora-website-backend.vercel.app/api/auth/profile",
+      {
+        headers: { Authorization: `Bearer ${authToken}` }
       }
-    };
+    );
+
+    const user = res.data.user || res.data;
+    setProfile(user);
+    setSettingsData(user);
+
+    if (user?._id) dispatch(setUserId(user._id));
+  } catch (err) {
+    console.error("❌ Profile fetch error:", err.response?.data || err.message);
+
+    if (err.response?.status === 400) {
+      // Token invalid → remove it
+      localStorage.removeItem("token");
+    }
+
+    logout();
+    dispatch(logoutUser());
+  }
+};
 
     fetchProfile();
   }, [token, dispatch]);
+
+  // Fetch checkout orders by email
+  useEffect(() => {
+    if (profile?._id && activeTab === "checkout-orders") {
+      // ✅ email ki jagah _id
+      fetchCheckoutOrders();
+    }
+  }, [profile, activeTab]);
+
+  // Auto-refresh orders every 5 seconds when on orders tab
+  useEffect(() => {
+    let interval;
+    if (profile?._id && activeTab === "checkout-orders") {
+      // ✅ email ki jagah _id
+      interval = setInterval(() => {
+        fetchCheckoutOrders();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [profile, activeTab]);
+
+  // ✅ Fixed: Fetch orders function with proper error handling
+  // ✅ NAYA: User ID se orders fetch karo (email se nahi)
+  const fetchCheckoutOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      // ✅ Profile se userId nikalo
+      const userId = profile?._id;
+
+      if (!userId) {
+        console.error("❌ User ID not found");
+        toast.error("User not logged in");
+        return;
+      }
+
+      console.log("📦 Fetching orders for userId:", userId);
+      console.log("🌐 Backend URL:", backendUrl);
+
+      // ✅ User ID se orders fetch karo
+      const res = await axios.get(`${backendUrl}/checkoutmodel/user/${userId}`);
+
+      console.log("✅ Orders fetched:", res.data);
+      setCheckoutOrders(res.data);
+    } catch (err) {
+      console.error(
+        "❌ Failed to fetch orders:",
+        err.response?.data || err.message
+      );
+      toast.error("Failed to load orders. Please check your connection.");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Cancel order function
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const res = await axios.put(
+        `${backendUrl}/checkoutmodel/${orderId}/status`,
+        { status: "cancelled" }
+      );
+
+      if (res.status === 200) {
+        toast.success("Order cancelled successfully!");
+        await fetchCheckoutOrders();
+        if (showOrderModal) {
+          setShowOrderModal(false);
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to cancel order");
+      console.error(err);
+    }
+  };
 
   const handleSettingsChange = (e) =>
     setSettingsData({ ...settingsData, [e.target.name]: e.target.value });
@@ -91,10 +195,10 @@ const Profile = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setProfile(res.data.user || res.data);
-      setMessage("✅ Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       setShowEdit(false);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to update profile");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
@@ -102,7 +206,7 @@ const Profile = () => {
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage("❌ New passwords do not match");
+      toast.error("New passwords do not match");
       return;
     }
     setLoading(true);
@@ -115,7 +219,7 @@ const Profile = () => {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage("✅ Password updated successfully!");
+      toast.success("Password updated successfully!");
       setPasswordData({
         oldPassword: "",
         newPassword: "",
@@ -123,7 +227,7 @@ const Profile = () => {
       });
       setShowPassword(false);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to change password");
+      toast.error(err.response?.data?.message || "Failed to change password");
     } finally {
       setLoading(false);
     }
@@ -137,11 +241,11 @@ const Profile = () => {
         { newEmail: emailData.newEmail },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage("✅ Email updated successfully!");
+      toast.success("Email updated successfully!");
       setEmailData({ newEmail: "", password: "" });
       setShowEmail(false);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to change email");
+      toast.error(err.response?.data?.message || "Failed to change email");
     } finally {
       setLoading(false);
     }
@@ -150,13 +254,72 @@ const Profile = () => {
   const handleDeleteOrder = (itemId) => {
     console.log("🗑️ Deleting item:", itemId);
     dispatch(removeFromCart(itemId));
-    setMessage("✅ Item removed from cart");
-    setTimeout(() => setMessage(""), 2000);
+    toast.success("Item removed from cart");
+  };
+
+  const confirmDeleteToast = () => {
+    toast.custom((t) => (
+      <div
+        className={`${
+          t.visible ? "animate-enter" : "animate-leave"
+        } max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex flex-col p-4 border border-gray-200`}
+      >
+        <p className="text-gray-800 font-medium mb-3">
+          ⚠️ Are you sure you want to delete your account?
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              handleDeleteAccount();
+            }}
+            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
+          >
+            Yes, Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ));
+  };
+
+  const confirmCancelOrderToast = (orderId) => {
+    toast.custom((t) => (
+      <div
+        className={`${
+          t.visible ? "animate-enter" : "animate-leave"
+        } max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex flex-col p-4 border border-gray-200`}
+      >
+        <p className="text-gray-800 font-medium mb-3">
+          ⚠️ Are you sure you want to cancel this order?
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              handleCancelOrder(orderId);
+            }}
+            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
+          >
+            Yes, Cancel
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+          >
+            No
+          </button>
+        </div>
+      </div>
+    ));
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("⚠️ Are you sure you want to delete your account?"))
-      return;
     try {
       await axios.delete(
         "https://velora-website-backend.vercel.app/api/auth/delete-account",
@@ -165,16 +328,15 @@ const Profile = () => {
 
       dispatch(logoutUser());
       logout();
-      alert("✅ Account deleted successfully");
+      toast.success("Account deleted successfully!");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete account");
+      toast.error(err.response?.data?.message || "Failed to delete account");
     }
   };
 
   const handleLogout = () => {
     setIsLoggingOut(true);
     setTimeout(() => {
-      console.log("👋 Logging out...");
       dispatch(logoutUser());
       logout();
       setIsLoggingOut(false);
@@ -185,6 +347,21 @@ const Profile = () => {
     (sum, item) => sum + (item.totalPrice || 0),
     0
   );
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "delivered":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-orange-100 text-orange-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+      case "deleted":
+        return "bg-red-100 text-red-800";
+    }
+  };
 
   if (!token)
     return (
@@ -219,11 +396,10 @@ const Profile = () => {
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6 md:px-8">
+      <Toaster position="top-right" />
       <h1 className="text-3xl font-semibold text-center mb-10 tracking-wide text-gray-800">
         MY ACCOUNT
       </h1>
-
-    
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Sidebar */}
@@ -246,8 +422,24 @@ const Profile = () => {
                 : "hover:bg-gray-100 text-gray-800"
             }`}
           >
-            <ShoppingBag size={18} /> MY ORDERS ({orders.length})
+            <ShoppingBag size={18} /> CART ({orders.length})
           </button>
+          <button
+            onClick={() => setActiveTab("checkout-orders")}
+            className={`w-full text-left px-5 py-3 font-medium border-b border-gray-200 flex items-center gap-2 ${
+              activeTab === "checkout-orders"
+                ? "bg-black text-white"
+                : "hover:bg-gray-100 text-gray-800"
+            }`}
+          >
+            <Package size={18} /> MY ORDERS (
+            {
+              checkoutOrders.filter((order) => order.status !== "cancelled")
+                .length
+            }
+            )
+          </button>
+
           <button
             onClick={() => setActiveTab("settings")}
             className={`w-full text-left px-5 py-3 font-medium border-b border-gray-200 flex items-center gap-2 ${
@@ -305,7 +497,7 @@ const Profile = () => {
           {activeTab === "orders" && (
             <>
               <h2 className="text-xl font-semibold mb-6 tracking-wide text-gray-800 border-b pb-3">
-                MY ORDERS
+                CART ITEMS
               </h2>
 
               {orders.length === 0 ? (
@@ -314,7 +506,7 @@ const Profile = () => {
                     size={48}
                     className="mx-auto mb-4 text-gray-300"
                   />
-                  <p className="text-gray-500 text-lg">No orders yet</p>
+                  <p className="text-gray-500 text-lg">No items in cart</p>
                   <p className="text-gray-400 text-sm mt-2">
                     Items you add to cart will appear here
                   </p>
@@ -382,6 +574,95 @@ const Profile = () => {
             </>
           )}
 
+          {activeTab === "checkout-orders" && (
+            <>
+              <h2 className="text-xl font-semibold mb-6 tracking-wide text-gray-800 border-b pb-3">
+                MY ORDERS
+              </h2>
+
+              {loadingOrders ? (
+                <div className="text-center py-10">
+                  <Loader2
+                    size={40}
+                    className="animate-spin mx-auto text-gray-400"
+                  />
+                  <p className="text-gray-500 mt-4">Loading orders...</p>
+                </div>
+              ) : checkoutOrders.filter(
+                  (order) =>
+                    order.status !== "cancelled" && order.status !== "deleted"
+                ).length === 0 ? (
+                <div className="text-center py-10">
+                  <Package size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 text-lg">No orders yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {checkoutOrders
+                    .filter(
+                      (order) =>
+                        order.status !== "cancelled" &&
+                        order.status !== "deleted"
+                    )
+                    .map((order) => (
+                      <div
+                        key={order._id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="font-semibold text-gray-800">
+                              Order #{order._id.slice(-6)}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(order.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                              order.status
+                            )}`}
+                          >
+                            {order.status.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 mb-3">
+                          <p className="text-sm text-gray-600">
+                            <strong>Items:</strong> {order.products.length}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Address:</strong> {order.address},{" "}
+                            {order.city}, {order.country}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowOrderModal(true);
+                            }}
+                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md flex items-center justify-center gap-2 transition"
+                          >
+                            <Eye size={16} /> View Details
+                          </button>
+                          {order.status === "pending" && (
+                            <button
+                              onClick={() => confirmCancelOrderToast(order._id)}
+                              className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-md flex items-center justify-center gap-2 transition"
+                            >
+                              <XCircle size={16} /> Cancel Order
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </>
+          )}
+
           {activeTab === "settings" && (
             <div className="space-y-8 text-gray-700">
               <h2 className="text-xl font-semibold tracking-wide border-b pb-3">
@@ -436,7 +717,8 @@ const Profile = () => {
                     >
                       {loading ? (
                         <>
-                          <Loader2 size={18} className="animate-spin" /> Saving...
+                          <Loader2 size={18} className="animate-spin" />{" "}
+                          Saving...
                         </>
                       ) : (
                         <>
@@ -506,7 +788,8 @@ const Profile = () => {
                     >
                       {loading ? (
                         <>
-                          <Loader2 size={18} className="animate-spin" /> Updating...
+                          <Loader2 size={18} className="animate-spin" />{" "}
+                          Updating...
                         </>
                       ) : (
                         <>
@@ -564,7 +847,8 @@ const Profile = () => {
                     >
                       {loading ? (
                         <>
-                          <Loader2 size={18} className="animate-spin" /> Updating...
+                          <Loader2 size={18} className="animate-spin" />{" "}
+                          Updating...
                         </>
                       ) : (
                         <>
@@ -584,7 +868,7 @@ const Profile = () => {
                   This action is irreversible. All your data will be deleted.
                 </p>
                 <button
-                  onClick={handleDeleteAccount}
+                  onClick={confirmDeleteToast}
                   className="bg-red-600 text-white px-5 py-2 rounded-md flex items-center gap-2 hover:bg-red-700"
                 >
                   <ShieldAlert size={18} /> Delete My Account
@@ -594,6 +878,134 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {showOrderModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b sticky top-0 bg-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Order Details
+                </h2>
+                <button
+                  onClick={() => setShowOrderModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Order Info */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                  Order Information
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <p>
+                    <strong>Order ID:</strong> #{selectedOrder._id.slice(-6)}
+                  </p>
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    <span
+                      className={`px-2 py-1 rounded text-sm ${getStatusColor(
+                        selectedOrder.status
+                      )}`}
+                    >
+                      {selectedOrder.status.toUpperCase()}
+                    </span>
+                  </p>
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {new Date(selectedOrder.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Shipping Info */}
+              <div >
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                  Shipping Information
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <p>
+                    <strong>Name:</strong> {selectedOrder.firstname}{" "}
+                    {selectedOrder.lastname}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {selectedOrder.email}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong> {selectedOrder.phone}
+                  </p>
+                  <p>
+                    <strong>Address:</strong> {selectedOrder.address},{" "}
+                    {selectedOrder.city}, {selectedOrder.country}
+                  </p>
+                  {selectedOrder.apartment && (
+                    <p>
+                      <strong>Apartment:</strong> {selectedOrder.apartment}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Products */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                  Products ({selectedOrder.products.length})
+                </h3>
+                <div className="space-y-3">
+                  {selectedOrder.products.map((product, idx) => (
+                    <div
+                      key={idx}
+                      className="flex gap-4 bg-gray-50 p-4 rounded-lg"
+                    >
+                      <img
+                        src={product.img}
+                        alt={product.title}
+                        className="w-20 h-20 object-cover rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">
+                          {product.title}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Quantity: {product.quantity}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Price: ₹{product.price}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-800">
+                          ₹
+                          {(
+                            parseFloat(product.price) *
+                            parseInt(product.quantity)
+                          ).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cancel Button */}
+              {selectedOrder.status === "pending" && (
+                <button
+                  onClick={() => confirmCancelOrderToast(selectedOrder._id)}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                >
+                  <XCircle size={20} /> Cancel This Order
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

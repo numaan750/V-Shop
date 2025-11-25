@@ -1,6 +1,34 @@
 // redux/cartslice.js
 import { createSlice } from '@reduxjs/toolkit';
 
+// ✅ NEW - Helper functions for localStorage
+const loadFromLocalStorage = () => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const saved = localStorage.getItem('veloraCart');
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.error('Error loading cart from localStorage:', error);
+    return null;
+  }
+};
+
+const saveToLocalStorage = (state) => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem('veloraCart', JSON.stringify({
+      items: state.items,
+      userId: state.userId,
+      guestCart: state.guestCart,
+      userCarts: state.userCarts,
+    }));
+  } catch (error) {
+    console.error('Error saving cart to localStorage:', error);
+  }
+};
+
 const cartSlice = createSlice({
   name: 'cart',
   initialState: {
@@ -8,9 +36,25 @@ const cartSlice = createSlice({
     userId: null,
     guestCart: [],
     userCarts: {},
+    initialized: false, // ✅ NEW - Track if cart is loaded
   },
   reducers: {
-    // ✅ User login - guest cart merge with user cart
+    // ✅ NEW - Initialize cart from localStorage
+    initializeCart: (state) => {
+      if (state.initialized) return; // Already initialized
+      
+      const saved = loadFromLocalStorage();
+      if (saved) {
+        state.items = saved.items || [];
+        state.userId = saved.userId || null;
+        state.guestCart = saved.guestCart || [];
+        state.userCarts = saved.userCarts || {};
+        console.log('✅ Cart loaded from localStorage');
+      }
+      state.initialized = true;
+    },
+
+    // ✅ UPDATED - User login - guest cart merge with user cart
     setUserId: (state, action) => {
       const userId = action.payload;
       console.log(`👤 Setting user ID: ${userId}`);
@@ -45,7 +89,7 @@ const cartSlice = createSlice({
         // Current items update karo
         state.items = state.userCarts[userId];
         
-        // Guest cart clear karo
+        // Guest cart clear karo (optional - aap comment kar sakte ho)
         // state.guestCart = [];
         
         console.log(`✅ Merged! User cart now has ${state.items.length} items`);
@@ -54,19 +98,33 @@ const cartSlice = createSlice({
         state.items = state.userCarts[userId] || [];
         console.log(`✅ Loaded ${state.items.length} items for user`);
       }
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
 
-    // ✅ Add to cart
+    // ✅ UPDATED - Add to cart
     addToCart: (state, action) => {
       const newItem = action.payload;
       console.log("🛒 Adding item:", newItem.name);
 
+      // ✅ NEW - Validate required fields
+      if (!newItem.productId || !newItem.name || !newItem.price) {
+        console.error('❌ Invalid item:', newItem);
+        return;
+      }
+
+      // ✅ NEW - Create unique ID if not provided
+      const uniqueId = newItem.id || `${newItem.productId}_${newItem.size}_${newItem.color || 'default'}`;
+
       if (state.userId) {
         // Logged-in user
         const existing = state.items.find(
-          item => item.id === newItem.id && 
-                  item.size === newItem.size && 
-                  item.color === newItem.color
+          item => item.id === uniqueId || (
+            item.productId === newItem.productId &&
+            item.size === newItem.size && 
+            item.color === newItem.color
+          )
         );
 
         if (existing) {
@@ -74,8 +132,14 @@ const cartSlice = createSlice({
           existing.totalPrice = existing.price * existing.quantity;
         } else {
           const item = {
-            ...newItem,
+            id: uniqueId, // ✅ Ensure ID is set
+            productId: newItem.productId,
+            name: newItem.name,
+            price: newItem.price,
             quantity: newItem.quantity || 1,
+            size: newItem.size || null,
+            color: newItem.color || null,
+            image: newItem.image || '/placeholder-image.jpg', // ✅ Fallback
             totalPrice: newItem.price * (newItem.quantity || 1),
           };
           state.items.push(item);
@@ -88,9 +152,11 @@ const cartSlice = createSlice({
       } else {
         // Guest user
         const existing = state.guestCart.find(
-          item => item.id === newItem.id && 
-                  item.size === newItem.size && 
-                  item.color === newItem.color
+          item => item.id === uniqueId || (
+            item.productId === newItem.productId &&
+            item.size === newItem.size && 
+            item.color === newItem.color
+          )
         );
 
         if (existing) {
@@ -98,17 +164,26 @@ const cartSlice = createSlice({
           existing.totalPrice = existing.price * existing.quantity;
         } else {
           const item = {
-            ...newItem,
+            id: uniqueId,
+            productId: newItem.productId,
+            name: newItem.name,
+            price: newItem.price,
             quantity: newItem.quantity || 1,
+            size: newItem.size || null,
+            color: newItem.color || null,
+            image: newItem.image || '/placeholder-image.jpg',
             totalPrice: newItem.price * (newItem.quantity || 1),
           };
           state.guestCart.push(item);
         }
         console.log(`✅ Added to guest cart. Total: ${state.guestCart.length}`);
       }
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
 
-    // ✅ Remove from cart
+    // ✅ Remove from cart (already good)
     removeFromCart: (state, action) => {
       const itemId = action.payload;
       console.log("🗑️ Removing item:", itemId);
@@ -121,9 +196,12 @@ const cartSlice = createSlice({
       }
       
       console.log("✅ Item removed");
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
 
-    // ✅ Update quantity
+    // ✅ Update quantity (already good)
     updateQuantity: (state, action) => {
       const { id, quantity } = action.payload;
       console.log(`📝 Updating quantity: ${id} -> ${quantity}`);
@@ -141,9 +219,12 @@ const cartSlice = createSlice({
       }
       
       console.log("✅ Quantity updated");
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
 
-    // ✅ Clear cart
+    // ✅ Clear cart (already good)
     clearCart: (state) => {
       console.log("🧹 Clearing cart");
       
@@ -153,22 +234,29 @@ const cartSlice = createSlice({
       } else {
         state.guestCart = [];
       }
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
 
-    // ✅ Logout
+    // ✅ Logout (already good)
     logoutUser: (state) => {
       console.log(`👋 Logging out user: ${state.userId}`);
       
       // Items clear karo but userCarts mein save rahega
-      // state.items = [];
+      state.items = [];
       state.userId = null;
       
       console.log("✅ Switched to guest mode");
+      
+      // ✅ Save to localStorage
+      saveToLocalStorage(state);
     },
   },
 });
 
 export const {
+  initializeCart, // ✅ NEW export
   addToCart,
   removeFromCart,
   updateQuantity,

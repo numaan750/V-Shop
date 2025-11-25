@@ -4,6 +4,8 @@ import Navbar from "@/componenets/Mutualcomponents/Navbar";
 import Footer from "@/componenets/Mutualcomponents/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import ReduxProvider from "@/context/Reduxprovider";
+import { Toaster } from "react-hot-toast";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +34,7 @@ export default function RootLayout({ children }) {
           <ReduxProvider>
             <Navbar />
             {children}
+            <Toaster position="top-right" reverseOrder={false} />
             <Footer />
           </ReduxProvider>
         </AuthProvider>

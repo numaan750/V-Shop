@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 
 export default function HeroWithOverlayAndLiveTimer({ targetDate }) {
-  const defaultTarget = new Date(Date.now() + 14 * 60 * 60 * 1000); // 14 hours from now
-  const target = targetDate ? new Date(targetDate) : defaultTarget;
-
+  const defaultTarget = new Date(Date.now() + 14 * 60 * 60 * 1000); 
+const target = React.useMemo(
+  () => (targetDate ? new Date(targetDate) : new Date("2025-11-13T23:59:59")), 
+  [targetDate]
+);
   const calcRemaining = (to) => {
     const total = Math.max(0, new Date(to) - new Date());
     const sec = Math.floor((total / 1000) % 60);
@@ -18,11 +20,15 @@ export default function HeroWithOverlayAndLiveTimer({ targetDate }) {
   const [timeLeft, setTimeLeft] = useState(calcRemaining(target));
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimeLeft(calcRemaining(target));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [target]);
+  setTimeLeft(calcRemaining(target));
+
+  const id = setInterval(() => {
+    setTimeLeft(calcRemaining(target));
+  }, 1000);
+
+  return () => clearInterval(id);
+}, [target]);
+
 
   const fmt = (n) => String(n).padStart(2, "0");
 
