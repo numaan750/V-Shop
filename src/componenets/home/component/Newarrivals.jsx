@@ -68,8 +68,8 @@ const Newarrivals = () => {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-600  rounded-full animate-spin"></div>
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   if (error)

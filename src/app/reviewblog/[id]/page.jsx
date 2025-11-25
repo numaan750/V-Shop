@@ -27,7 +27,9 @@ const SingleBlogPage = () => {
         const blogData = await blogRes.json();
 
         // ✅ All blogs fetch karo (for prev/next navigation)
-        const allBlogsRes = await fetch("https://velora-website-backend.vercel.app/api/blogmodel");
+        const allBlogsRes = await fetch(
+          "https://velora-website-backend.vercel.app/api/blogmodel"
+        );
         const allBlogsData = await allBlogsRes.json();
 
         console.log("Single Blog Data:", blogData);
@@ -60,8 +62,8 @@ const SingleBlogPage = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="py-10 w-full h-screen bg-[#f7edee] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }

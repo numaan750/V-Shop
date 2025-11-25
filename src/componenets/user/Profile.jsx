@@ -60,7 +60,8 @@ const Profile = () => {
 
   // ✅ Dynamic backend URL - works in both development and production
   const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "https://velora-website-backend.vercel.app/api";
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "https://velora-website-backend.vercel.app/api";
 
   // Fetch profile
   useEffect(() => {
@@ -72,37 +73,40 @@ const Profile = () => {
       return;
     }
 
-const fetchProfile = async () => {
-  try {
-    const storedToken = localStorage.getItem("token");
-    const authToken = token || storedToken;
+    const fetchProfile = async () => {
+      try {
+        const storedToken = localStorage.getItem("token");
+        const authToken = token || storedToken;
 
-    if (!authToken) return;
+        if (!authToken) return;
 
-    const res = await axios.get(
-      "https://velora-website-backend.vercel.app/api/auth/profile",
-      {
-        headers: { Authorization: `Bearer ${authToken}` }
+        const res = await axios.get(
+          "https://velora-website-backend.vercel.app/api/auth/profile",
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }
+        );
+
+        const user = res.data.user || res.data;
+        setProfile(user);
+        setSettingsData(user);
+
+        if (user?._id) dispatch(setUserId(user._id));
+      } catch (err) {
+        console.error(
+          "❌ Profile fetch error:",
+          err.response?.data || err.message
+        );
+
+        if (err.response?.status === 400) {
+          // Token invalid → remove it
+          localStorage.removeItem("token");
+        }
+
+        logout();
+        dispatch(logoutUser());
       }
-    );
-
-    const user = res.data.user || res.data;
-    setProfile(user);
-    setSettingsData(user);
-
-    if (user?._id) dispatch(setUserId(user._id));
-  } catch (err) {
-    console.error("❌ Profile fetch error:", err.response?.data || err.message);
-
-    if (err.response?.status === 400) {
-      // Token invalid → remove it
-      localStorage.removeItem("token");
-    }
-
-    logout();
-    dispatch(logoutUser());
-  }
-};
+    };
 
     fetchProfile();
   }, [token, dispatch]);
@@ -582,11 +586,9 @@ const fetchProfile = async () => {
 
               {loadingOrders ? (
                 <div className="text-center py-10">
-                  <Loader2
-                    size={40}
-                    className="animate-spin mx-auto text-gray-400"
-                  />
-                  <p className="text-gray-500 mt-4">Loading orders...</p>
+                  <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
                 </div>
               ) : checkoutOrders.filter(
                   (order) =>
@@ -925,7 +927,7 @@ const fetchProfile = async () => {
               </div>
 
               {/* Shipping Info */}
-              <div >
+              <div>
                 <h3 className="text-lg font-semibold mb-3 text-gray-800">
                   Shipping Information
                 </h3>

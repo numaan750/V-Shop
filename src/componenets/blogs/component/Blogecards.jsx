@@ -14,7 +14,9 @@ const Blogecards = () => {
     const fetchBlogs = async () => {
       try {
         setLoading(true);
-        const res = await fetch("https://velora-website-backend.vercel.app/api/blogmodel");
+        const res = await fetch(
+          "https://velora-website-backend.vercel.app/api/blogmodel"
+        );
 
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
@@ -79,26 +81,9 @@ const Blogecards = () => {
   // ✅ Loading state
   if (loading) {
     return (
-      <section className="py-20">
-        <div className="Mycontainer">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="bg-white max-w-md mx-auto rounded-lg shadow-lg overflow-hidden animate-pulse"
-              >
-                <div className="w-full h-64 bg-gray-200"></div>
-                <div className="p-5 space-y-3">
-                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
     );
   }
 
