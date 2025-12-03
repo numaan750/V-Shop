@@ -3,7 +3,7 @@ import React from "react";
 import AddtoCard from "../../componenets/ordercarts/AddtoCard";
 import { useSearchParams } from "next/navigation";
 
-const page = () => {
+const Page = () => {
   const searchParams = useSearchParams();
 
   // ✅ Payment parameters ko AddToCart component mein pass karo
@@ -17,4 +17,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Page;
