@@ -18,8 +18,25 @@ const ProductPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ❌ REMOVE THIS LINE
-  // const product = products.find((item) => item.id === Number(id));
+
+// ✅ Add this function to calculate discounted price
+const getProductPrice = (product) => {
+  if (!product) return 0;
+
+  const basePrice = product.price; // single product, size logic optional here
+
+  if (
+    product.discount &&
+    product.discount.percent &&
+    (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date())
+  ) {
+    const discountAmount = (basePrice * product.discount.percent) / 100;
+    return basePrice - discountAmount;
+  }
+
+  return basePrice;
+};
+
 
   // ✅ ADD THIS useEffect - Fetch product from backend
   useEffect(() => {
@@ -28,6 +45,9 @@ const ProductPage = () => {
         setLoading(true);
         setError(null);
         const data = await getProductById(id); // API call
+        if (data.discount && data.discount.percent) {
+  data.discountedPrice = getProductPrice(data);
+}
         setProduct(data);
       } catch (err) {
         setError(err.message);

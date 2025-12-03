@@ -51,6 +51,27 @@ const Prodectreview = ({ product }) => {
 
   const router = useRouter();
 
+    const getProductPrice = (product) => {
+  if (!product) return 0;
+
+  // basePrice consider selected size if available
+  let basePrice = selectedSize
+    ? product?.sizes?.find((s) => s.label === selectedSize)?.price
+    : product?.price || 0;
+
+  // Apply discount if available and not expired
+  if (
+    product.discount &&
+    product.discount.percent &&
+    (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date())
+  ) {
+    const discountAmount = (basePrice * product.discount.percent) / 100;
+    return basePrice - discountAmount;
+  }
+
+  return basePrice;
+};
+
   useEffect(() => {
     if (product?.images && product.images.length > 0) {
       const firstImg = product.images[0];
@@ -69,11 +90,8 @@ const Prodectreview = ({ product }) => {
     );
   }
 
-  const basePrice = selectedSize
-    ? product?.sizes?.find((s) => s.label === selectedSize)?.price
-    : product?.price || 200;
-
-  const totalPrice = basePrice * quantity;
+  const basePrice = getProductPrice(product); // discounted price if applicable
+const totalPrice = basePrice * quantity;
 
   const handleMouseMove = (e) => {
     const { left, top, width, height } = imgRef.current.getBoundingClientRect();
@@ -93,6 +111,8 @@ const Prodectreview = ({ product }) => {
     if (typeof category === "object" && category.name) return category.name;
     return "Unknown Category";
   };
+
+
 
   const categoryName = getCategoryName(product.category);
   const categoryId = product.category?._id || product.category; // for links
@@ -266,13 +286,29 @@ const Prodectreview = ({ product }) => {
             <h1 className="text-2xl font-bold">{product?.title}</h1>
 
             <p className="text-2xl font-semibold ">
-              ₹{totalPrice}.00{" "}
-              {quantity > 1 && (
-                <span className="text-gray-500 font-normal text-sm">
-                  (₹{basePrice} each)
-                </span>
-              )}
-            </p>
+  ₹{totalPrice}.00{" "}
+  {product.discount?.percent && (
+    <span className="line-through text-gray-400 ml-2">
+      ₹{(selectedSize
+        ? product?.sizes?.find((s) => s.label === selectedSize)?.price
+        : product?.price
+      ).toFixed(2)}
+    </span>
+  )}
+  {quantity > 1 && (
+    <span className="text-gray-500 font-normal text-sm">
+      (₹{basePrice.toFixed(2)} each)
+    </span>
+  )}
+</p>
+
+{/* Optional: show discount badge */}
+{product.discount?.percent && (
+  <span className="text-sm bg-red-500 text-white px-2 py-1 rounded mt-1 inline-block">
+    {product.discount.percent}% OFF
+  </span>
+)}
+
 
             <p className="text-gray-500 text-md font-semibold leading-relaxed">
               {product?.description}
