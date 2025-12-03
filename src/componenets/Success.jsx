@@ -1,12 +1,13 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation"; 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useDispatch } from "react-redux";
 import { clearCart } from "@/redux/cartslice";
 import axios from "axios";
 import toast from "react-hot-toast"; 
 
-export default function SuccessPage() {
+// Separate component jo useSearchParams use karta hai
+function SuccessContent() {
   const router = useRouter();
   const dispatch = useDispatch();
   const searchParams = useSearchParams(); 
@@ -137,5 +138,23 @@ export default function SuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function SuccessPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen flex flex-col items-center justify-center bg-green-50">
+          <div className="bg-white p-10 rounded-lg shadow-lg text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold text-gray-800">Loading...</h2>
+          </div>
+        </div>
+      }
+    >
+      <SuccessContent />
+    </Suspense>
   );
 }
