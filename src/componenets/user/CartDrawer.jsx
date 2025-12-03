@@ -10,6 +10,20 @@ const CartDrawer = ({ isOpen, onClose }) => {
   const router = useRouter();
   const dispatch = useDispatch();
 
+  // ✅ Discount calculate karne ka function
+const getDiscountedPrice = (product) => {
+  if (!product) return 0;
+  let price = product.price;
+  if (product.discount && product.discount.percent) {
+    // Agar discount ka expiry date hai aur abhi valid hai
+    if (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date()) {
+      const discountAmount = (price * product.discount.percent) / 100;
+      return price - discountAmount;
+    }
+  }
+  return price;
+};
+
   // ✅ Redux store se cart state fetch karo
   const cartState = useSelector((state) => state.cart);
   
@@ -23,10 +37,10 @@ const CartDrawer = ({ isOpen, onClose }) => {
 
   const hasItems = cartItems.length > 0;
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+ const subtotal = cartItems.reduce(
+  (sum, item) => sum + (item.discountedPrice ?? getDiscountedPrice(item)) * item.quantity,
+  0
+);
 
   const handleNavigate = (path) => {
     onClose();
@@ -153,11 +167,16 @@ const CartDrawer = ({ isOpen, onClose }) => {
                   {/* ✅ UPDATED - Better price display */}
                   <div className="text-right">
                     <p className="text-gray-800 font-medium text-sm">
-                      ₹{(item.price * item.quantity).toFixed(2)}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      ₹{item.price} × {item.quantity}
-                    </p>
+  ₹{((item.discountedPrice ?? getDiscountedPrice(item)) * item.quantity).toFixed(2)}
+</p>
+<p className="text-gray-500 text-xs">
+  ₹{item.price} × {item.quantity}
+  {item.discount?.percent && (
+    <span className="line-through text-gray-400 ml-1">
+      ₹{item.price}
+    </span>
+  )}
+</p>
                     <button
                       className="text-gray-400 cursor-pointer hover:text-red-600 text-xs mt-1"
                       onClick={() => dispatch(removeFromCart(item.id))}

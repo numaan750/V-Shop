@@ -8,6 +8,23 @@ import toast from "react-hot-toast";
 
 const Newarrivals = () => {
   const dispatch = useDispatch();
+  // ✅ ADD THIS - Calculate discounted price
+const getDiscountedPrice = (product) => {
+  if (!product) return 0;
+
+  let price = product.price;
+
+  if (product.discount && product.discount.percent) {
+    // check expiry date if exists
+    if (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date()) {
+      const discountAmount = (price * product.discount.percent) / 100;
+      return price - discountAmount;
+    }
+  }
+
+  return price;
+};
+
   const { products: backendProducts, loading, error } = useProducts();
 
   // ✅ Latest 3 products
@@ -98,11 +115,11 @@ const Newarrivals = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-5">
             {newProducts.map((product) => (
               <div key={product._id} className="group relative overflow-hidden">
-                {product.sale && (
-                  <span className="absolute top-4 left-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                    Sale!
-                  </span>
-                )}
+                {product.discount?.percent && (
+  <span className="absolute top-4 left-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
+    {product.discount.percent}% OFF
+  </span>
+)}
 
                 <Link href={`/prodects/${product._id}`}>
                   <div className="relative w-full aspect-[1/1.2] overflow-hidden bg-gray-100">
@@ -131,7 +148,7 @@ const Newarrivals = () => {
                         const item = {
                           productId: product._id,
                           name: product.title,
-                          price: product.price,
+price: getDiscountedPrice(product), // ✅ discounted price
                           quantity: 1,
                           size:
                             selectedSizes[product._id] ||
@@ -175,8 +192,13 @@ const Newarrivals = () => {
                     {product.category?.name || "Uncategorized"}
                   </p>
                   <p className="mt-1 text-gray-900 font-semibold">
-                    ₹{selectedPrices[product._id] ?? product.price}.00
-                  </p>
+  ₹{selectedPrices[product._id] ?? getDiscountedPrice(product)}.00
+  {product.discount?.percent && (
+    <span className="line-through text-gray-400 ml-2">
+      ₹{product.price}.00
+    </span>
+  )}
+</p>
 
                   {/* Sizes */}
                   {product.sizes && product.sizes.length > 0 && (

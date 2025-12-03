@@ -8,6 +8,24 @@ import toast from "react-hot-toast";
 
 const Bestsellers = () => {
   const dispatch = useDispatch();
+
+  // ✅ Calculate discounted price for a product
+const getDiscountedPrice = (product) => {
+  if (!product) return 0;
+
+  let price = product.price;
+
+  if (product.discount && product.discount.percent) {
+    // check expiry date if exists
+    if (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date()) {
+      const discountAmount = (price * product.discount.percent) / 100;
+      return price - discountAmount;
+    }
+  }
+
+  return price;
+};
+
   const { products: backendProducts, loading, error } = useProducts();
 
   // ✅ Latest 3 products on Sale
@@ -91,11 +109,11 @@ const Bestsellers = () => {
               key={product._id}
               className="bg-white overflow-hidden group relative "
             >
-              {product.sale && (
-                <span className="absolute top-4 left-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                  Sale!
-                </span>
-              )}
+              {product.discount?.percent && (
+  <span className="absolute top-4 left-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
+    {product.discount.percent}% OFF
+  </span>
+)}
 
               {/* Product Image */}
               <Link href={`/prodects/${product._id}`}>
@@ -125,7 +143,7 @@ const Bestsellers = () => {
                       const item = {
                         productId: product._id,
                         name: product.title,
-                        price: selectedPrices[product._id] ?? product.price, // ✅ dynamic price
+price: selectedPrices[product._id] ?? getDiscountedPrice(product), // ✅ use discount if available
                         quantity: 1,
                         size:
                           selectedSizes[product._id] ||
@@ -171,8 +189,14 @@ const Bestsellers = () => {
                   {product.category?.name || "Uncategorized"}
                 </p>
                 <p className="text-base sm:text-lg font-bold text-gray-800 mt-1">
-                  ₹{selectedPrices[product._id] ?? product.price}.00
-                </p>
+  ₹{selectedPrices[product._id] ?? getDiscountedPrice(product)}.00
+  {product.discount?.percent && (
+    <span className="line-through text-gray-400 ml-2">
+      ₹{product.price}.00
+    </span>
+  )}
+</p>
+
 
                 {/* Sizes */}
                 {product.sizes && product.sizes.length > 0 && (
