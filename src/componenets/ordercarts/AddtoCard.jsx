@@ -48,7 +48,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
   });
 
   // Backend URL
-  const backendUrl = "http://localhost:4000/api";
+  const backendUrl = "https://velora-website-backend.vercel.app/api";
 
   // ✅ Extract URL parameters on mount
 
@@ -363,7 +363,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
       console.log("💾 Order data saved to sessionStorage");
 
       // ✅ Create Stripe session
-      const response = await axios.post("http://localhost:4000/api/stripe", {
+      const response = await axios.post("https://velora-website-backend.vercel.app/api/stripe", {
         products: cartItems.map((item) => ({
           _id: item.id,
           name: item.name,

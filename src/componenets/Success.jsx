@@ -41,7 +41,7 @@ export default function SuccessPage() {
         console.log("📤 Sending order to backend...", orderData);
 
         const res = await axios.post(
-          "http://localhost:4000/api/checkoutmodel",
+          "https://velora-website-backend.vercel.app/api/checkoutmodel",
           orderData,
           {
             headers: { "Content-Type": "application/json" },
