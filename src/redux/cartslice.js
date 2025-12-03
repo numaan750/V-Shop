@@ -1,3 +1,4 @@
+"use client";
 // redux/cartslice.js
 import { createSlice } from '@reduxjs/toolkit';
 
