@@ -144,6 +144,22 @@ const Products = () => {
     return "/placeholder-image.jpg";
   };
 
+
+  const getProductPrice = (product) => {
+  const basePrice = selectedPrices[product._id] ?? product.price;
+
+  if (
+    product.discount &&
+    product.discount.percent &&
+    (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date())
+  ) {
+    const discountAmount = (basePrice * product.discount.percent) / 100;
+    return basePrice - discountAmount;
+  }
+
+  return basePrice;
+};
+
   if (loading) {
     return (
       <section className="py-20">
@@ -229,11 +245,11 @@ const Products = () => {
               className="text-left bg-white overflow-hidden group relative"
             >
               <div className="relative">
-                {product.sale && (
-                  <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded z-10">
-                    Sale!
-                  </span>
-                )}
+                {product.discount && product.discount.percent && (
+  <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded z-10">
+    {product.discount.percent}% OFF
+  </span>
+)}
 
                 {/* ✅ Image with fixed aspect ratio */}
                 <Link href={`/prodects/${product._id}`}>
@@ -277,7 +293,7 @@ const Products = () => {
                         const item = {
                           productId: product._id,
                           name: product.title,
-                          price: selectedPrices[product._id] ?? product.price, // ✅ dynamic price
+price: getProductPrice(product), // ✅ discounted price included
                           quantity: 1,
                           size: selectedSizes[product._id]?.label || null,
                           color: selectedOptions[product._id]?.color || null,
@@ -324,9 +340,15 @@ const Products = () => {
                     {product.description}
                   </p>
                 )}
-                <p className="text-base sm:text-lg font-bold text-gray-800 mt-1">
-                  ₹{selectedPrices[product._id] ?? product.price}.00
-                </p>
+                <p className="text-base sm:text-lg font-bold text-gray-800 mt-1 flex items-center gap-2">
+  ₹{getProductPrice(product).toFixed(2)}
+  {product.discount && product.discount.percent && (
+    <span className="text-sm line-through text-gray-400">
+      ₹{(selectedPrices[product._id] ?? product.price).toFixed(2)}
+    </span>
+  )}
+</p>
+
 
                 {/* Sizes */}
                 {product.sizes && product.sizes.length > 0 && (
