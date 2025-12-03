@@ -1,11 +1,10 @@
-import Home from '@/componenets/home/Home'
 import React from 'react'
+import CancelPage from '../../componenets/Cancel'
 
 const page = () => {
   return (
     <div>
-      <Home />
-      
+        <CancelPage />
     </div>
   )
 }

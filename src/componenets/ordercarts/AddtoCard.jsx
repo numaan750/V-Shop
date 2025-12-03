@@ -3,24 +3,33 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { updateQuantity, removeFromCart, clearCart } from "@/redux/cartslice";
 import { useRouter } from "next/navigation";
-import axios from "axios"; // YEH ADD KAREIN
-import toast from "react-hot-toast"; // YEH BHI ADD KAREIN
+import axios from "axios"; 
+import toast from "react-hot-toast";
+import { loadStripe } from "@stripe/stripe-js";
 
-const AddToCart = () => {
+const AddToCart = ({paymentStatus, sessionId}) => {
+  
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
+  locale: 'auto'
+});  console.log("Stripe Key:", process.env.NEXT_PUBLIC_STRIPE_KEY);
+
   const dispatch = useDispatch();
   const router = useRouter();
-
   const cartState = useSelector((state) => state.cart);
   const cartItems = cartState.userId ? cartState.items : cartState.guestCart;
 
   const [step, setStep] = useState("cart");
-  const [shippingMethods, setShippingMethods] = useState([]);
+  // const [shippingMethods, setShippingMethods] = useState([]);
   const [selectedShipping, setSelectedShipping] = useState(null);
-  const [loadingShipping, setLoadingShipping] = useState(false);
+  // const [loadingShipping, setLoadingShipping] = useState(false);
   const [showShippingMethods, setShowShippingMethods] = useState(false);
   const [isCODSelected, setIsCODSelected] = useState(false);
   const [formError, setFormError] = useState("");
   const userId = useSelector((state) => state.cart.userId);
+  // ✅ ADD THESE NEW STATES
+  const [completedOrder, setCompletedOrder] = useState(null);
+  const [paymentMethodUsed, setPaymentMethodUsed] = useState("");
+  // ✅ Get URL parameters
 
 
   // COD charges (you can modify this value)
@@ -39,7 +48,64 @@ const AddToCart = () => {
   });
 
   // Backend URL
-  const backendUrl = "https://velora-website-backend.vercel.app/api";
+  const backendUrl = "http://localhost:4000/api";
+
+  // ✅ Extract URL parameters on mount
+
+  // ✅ ADD THIS USEEFFECT AFTER backendUrl
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      // ✅ Use props instead of searchParams
+      if (paymentStatus === "success" && sessionId) {
+        console.log("✅ Payment successful! Session ID:", sessionId);
+
+        const pendingOrderStr = sessionStorage.getItem("pendingOrder");
+
+        if (pendingOrderStr) {
+          try {
+            const orderData = JSON.parse(pendingOrderStr);
+            orderData.paymentStatus = "paid";
+            orderData.sessionId = sessionId;
+
+            console.log("📤 Saving order to backend...", orderData);
+
+            const res = await axios.post(
+              `${backendUrl}/checkoutmodel`,
+              orderData,
+              {
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+
+            console.log("✅ Order saved successfully:", res.data);
+
+            setCompletedOrder(res.data);
+            setPaymentMethodUsed("Card");
+
+            sessionStorage.removeItem("pendingOrder");
+
+            setStep("complete");
+
+            toast.success("✅ Payment successful! Order placed.");
+
+            // Clear URL parameters
+            window.history.replaceState({}, "", "/ordercarts");
+          } catch (err) {
+            console.error("❌ Error saving order:", err);
+            toast.error("Failed to save order. Please contact support.");
+          }
+        } else {
+          toast.error("Order data not found. Please try again.");
+        }
+      } else if (paymentStatus === "cancelled") {
+        toast.error("Payment was cancelled. Please try again.");
+        setStep("checkout");
+        window.history.replaceState({}, "", "/ordercarts");
+      }
+    };
+
+    checkPaymentStatus();
+  }, [paymentStatus, sessionId]); // ✅ Dependencies changed
 
   // Fetch shipping methods
   const fetchShippingMethods = async () => {
@@ -143,99 +209,193 @@ const AddToCart = () => {
   const total = subtotal + shippingPrice + codCharges;
 
   // Handle Place Order - Save to Backend
-const handlePlaceOrder = async () => {
-  try {
-    // ✅ Validation - Check if user is logged in
-    if (!userId) {
-      toast.error("❌ Please login first to place order");
-      router.push("/login"); // Redirect to login
-      return;
-    }
-
-    // ✅ Validate cart
-    if (cartItems.length === 0) {
-      toast.error("❌ Your cart is empty");
-      return;
-    }
-
-    // ✅ Validate form fields
-    if (
-      !formData.email ||
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.houseAddress ||
-      !formData.city ||
-      !formData.phone
-    ) {
-      toast.error("❌ Please fill all required fields");
-      return;
-    }
-
-    // ✅ Validate shipping or COD selection
-    if (!selectedShipping && !isCODSelected) {
-      toast.error("❌ Please select a shipping method or COD");
-      return;
-    }
-
-    console.log("📤 Preparing checkout data...");
-    console.log("User ID:", userId);
-    console.log("Form Data:", formData);
-    console.log("Cart Items:", cartItems);
-
-    // ✅ Prepare checkout data WITH userId (fixed field names)
-    const checkoutData = {
-      userId: userId, // 🔥 Logged-in user ki ID
-      username: formData.firstName, // Ya koi username field ho
-      email: formData.email,
-      firstname: formData.firstName, // ✅ Backend ke hisaab se
-      lastname: formData.lastName,   // ✅ Backend ke hisaab se
-      country: formData.country,
-      city: formData.city,
-      address: formData.houseAddress, // ✅ Backend expects "address"
-      phone: formData.phone,
-      apartment: formData.apartment || "",
-      products: cartItems.map((item) => ({
-        img: item.image || item.img || "/placeholder.jpg",
-        title: item.name || item.title || "Unknown Product",
-        price: item.price.toString(),
-        quantity: item.quantity.toString(),
-      })),
-      status: "pending",
-    };
-
-    console.log("📤 Sending checkout data:", checkoutData);
-
-    // ✅ Send to backend
-    const res = await axios.post(
-      `${backendUrl}/checkoutmodel`,
-      checkoutData,
-      {
-        headers: { "Content-Type": "application/json" },
+  const handlePlaceOrder = async () => {
+    try {
+      // ✅ Validation - Check if user is logged in
+      if (!userId) {
+        toast.error("❌ Please login first to place order");
+        router.push("/login"); // Redirect to login
+        return;
       }
-    );
 
-    console.log("✅ Order created successfully:", res.data);
-    toast.success("✅ Order placed successfully!");
+      // ✅ Validate cart
+      if (cartItems.length === 0) {
+        toast.error("❌ Your cart is empty");
+        return;
+      }
 
-    // ✅ Move to complete step
-    setStep("complete");
+      // ✅ Validate form fields
+      if (
+        !formData.email ||
+        !formData.firstName ||
+        !formData.lastName ||
+        !formData.houseAddress ||
+        !formData.city ||
+        !formData.phone
+      ) {
+        toast.error("❌ Please fill all required fields");
+        return;
+      }
 
-    // ✅ Optional: Clear cart after successful order
-    // dispatch(clearCart());
-  } catch (err) {
-    console.error("❌ Order creation error:", err.response?.data || err.message);
-    
-    // Better error handling
-    if (err.response?.status === 400) {
-      toast.error(err.response?.data?.message || "Invalid order data");
-    } else if (err.response?.status === 401) {
-      toast.error("Please login to place order");
-      router.push("/login");
-    } else {
-      toast.error("Failed to place order. Please try again.");
+      // ✅ Validate shipping or COD selection
+      if (!isCODSelected) {
+        toast.error("❌ Please select a shipping method or COD");
+        return;
+      }
+
+      console.log("📤 Preparing checkout data...");
+      console.log("User ID:", userId);
+      console.log("Form Data:", formData);
+      console.log("Cart Items:", cartItems);
+
+      // ✅ Prepare checkout data WITH userId (fixed field names)
+      const checkoutData = {
+        userId: userId, // 🔥 Logged-in user ki ID
+        username: formData.firstName, // Ya koi username field ho
+        email: formData.email,
+        firstname: formData.firstName, // ✅ Backend ke hisaab se
+        lastname: formData.lastName, // ✅ Backend ke hisaab se
+        country: formData.country,
+        city: formData.city,
+        address: formData.houseAddress, // ✅ Backend expects "address"
+        phone: formData.phone,
+        apartment: formData.apartment || "",
+        products: cartItems.map((item) => ({
+          img: item.image || item.img || "/placeholder.jpg",
+          title: item.name || item.title || "Unknown Product",
+          price: item.price.toString(),
+          quantity: item.quantity.toString(),
+        })),
+        status: "pending",
+      };
+
+      console.log("📤 Sending checkout data:", checkoutData);
+
+      // ✅ Send to backend
+      const res = await axios.post(
+        `${backendUrl}/checkoutmodel`,
+        checkoutData,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      console.log("✅ Order created successfully:", res.data);
+      toast.success("✅ Order placed successfully!");
+
+      setCompletedOrder(res.data);
+    setPaymentMethodUsed("COD");
+
+      // ✅ Move to complete step
+      setStep("complete");
+
+      // ✅ Optional: Clear cart after successful order
+      // dispatch(clearCart());
+    } catch (err) {
+      console.error(
+        "❌ Order creation error:",
+        err.response?.data || err.message
+      );
+
+      // Better error handling
+      if (err.response?.status === 400) {
+        toast.error(err.response?.data?.message || "Invalid order data");
+      } else if (err.response?.status === 401) {
+        toast.error("Please login to place order");
+        router.push("/login");
+      } else {
+        toast.error("Failed to place order. Please try again.");
+      }
     }
-  }
-};
+  };
+
+  const handleStripeCheckout = async () => {
+    try {
+      if (!userId) {
+        toast.error("❌ Please login first to proceed");
+        router.push("/login");
+        return;
+      }
+
+      if (cartItems.length === 0) {
+        toast.error("❌ Your cart is empty");
+        return;
+      }
+
+      if (
+        !formData.email ||
+        !formData.firstName ||
+        !formData.lastName ||
+        !formData.houseAddress ||
+        !formData.city ||
+        !formData.phone
+      ) {
+        toast.error("❌ Please fill all required fields");
+        return;
+      }
+
+      console.log("🔄 Processing Stripe payment...");
+
+      // ✅ Prepare order data
+      const orderData = {
+        userId: userId,
+        username: formData.firstName,
+        email: formData.email,
+        firstname: formData.firstName,
+        lastname: formData.lastName,
+        country: formData.country,
+        city: formData.city,
+        address: formData.houseAddress,
+        phone: formData.phone,
+        apartment: formData.apartment || "",
+        products: cartItems.map((item) => ({
+          img: item.image || "/placeholder.jpg",
+          title: item.name,
+          price: item.price.toString(),
+          quantity: item.quantity.toString(),
+        })),
+        status: "pending", // Will be updated to "paid" on success page
+        paymentStatus: "pending", // Will be updated to "paid" on success page
+      };
+
+      // ✅ Save to sessionStorage BEFORE redirecting to Stripe
+      sessionStorage.setItem("pendingOrder", JSON.stringify(orderData));
+      console.log("💾 Order data saved to sessionStorage");
+
+      // ✅ Create Stripe session
+      const response = await axios.post("http://localhost:4000/api/stripe", {
+        products: cartItems.map((item) => ({
+          _id: item.id,
+          name: item.name,
+          image: item.image || "https://via.placeholder.com/150",
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      });
+
+      console.log("✅ Stripe session created:", response.data);
+
+      // ✅ Redirect to Stripe
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        toast.error("❌ Payment URL not received from server");
+      }
+    } catch (err) {
+      console.error(
+        "❌ Stripe checkout error:",
+        err.response?.data || err.message
+      );
+
+      if (err.response?.status === 404) {
+        toast.error("❌ Payment service not found. Please contact support.");
+      } else if (err.response?.status === 400) {
+        toast.error(err.response?.data?.message || "Invalid payment data");
+      } else {
+        toast.error("Payment failed. Please try again.");
+      }
+    }
+  };
 
   return (
     <div className="py-15">
@@ -552,7 +712,7 @@ const handlePlaceOrder = async () => {
                   </div>
                 )}
 
-                {!showShippingMethods && !isCODSelected && (
+                {!showShippingMethods && (
                   <button
                     onClick={handleContinueToShipping}
                     className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-full font-semibold transition mt-5"
@@ -563,7 +723,7 @@ const handlePlaceOrder = async () => {
               </div>
 
               {/* Shipping Methods Section */}
-              {showShippingMethods && !isCODSelected && (
+              {/* {showShippingMethods && !isCODSelected && (
                 <div>
                   <h2 className="inline-block text-4xl font-bold mb-7 pb-5 border-b-2 border-[#d1d1d1]">
                     Shipping Methods
@@ -621,38 +781,93 @@ const handlePlaceOrder = async () => {
                     </div>
                   )}
                 </div>
-              )}
+              )} */}
 
-              {(showShippingMethods || isCODSelected) && (
+              {showShippingMethods && (
                 <>
                   <div className="mt-10">
-                    <h2 className="text-4xl font-bold mb-10">Payment</h2>
-                    <div className="pl-15 max-w-3xl">
-                      <div className="border-t border-black bg-gray-50 p-4">
-                        <p className="text-gray-700 text-xl leading-relaxed flex items-start">
+                    <h2 className="text-4xl font-bold mb-10">Payment Method</h2>
+                    <div className="pl-15 max-w-3xl space-y-4">
+                      {/* ✅ Card Payment with Stripe */}
+                      <div
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                          !isCODSelected
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-300 bg-white"
+                        }`}
+                        onClick={() => setIsCODSelected(false)}
+                      >
+                        <label className="flex items-start cursor-pointer">
                           <input
-                            type="checkbox"
-                            checked={isCODSelected}
-                            onChange={handleCODToggle}
-                            className="mr-3 mt-1 accent-black cursor-pointer"
+                            type="radio"
+                            name="paymentMethod"
+                            checked={!isCODSelected}
+                            onChange={() => setIsCODSelected(false)}
+                            className="mr-3 mt-1 accent-blue-500 cursor-pointer"
                           />
-                          Cash on Delivery (COD) - Pay when you receive your
-                          order
-                        </p>
+                          <div>
+                            <p className="text-gray-900 text-xl font-semibold">
+                              💳 Card Payment (Stripe)
+                            </p>
+                            <p className="text-gray-600 text-sm mt-1">
+                              Pay securely with your credit/debit card
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* ✅ Cash on Delivery */}
+                      <div
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                          isCODSelected
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-300 bg-white"
+                        }`}
+                        onClick={() => setIsCODSelected(true)}
+                      >
+                        <label className="flex items-start cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            checked={isCODSelected}
+                            onChange={() => setIsCODSelected(true)}
+                            className="mr-3 mt-1 accent-green-500 cursor-pointer"
+                          />
+                          <div>
+                            <p className="text-gray-900 text-xl font-semibold">
+                              💵 Cash on Delivery
+                            </p>
+                            <p className="text-gray-600 text-sm mt-1">
+                              Pay when you receive your order (₹{COD_CHARGES}{" "}
+                              extra charges)
+                            </p>
+                          </div>
+                        </label>
                       </div>
                     </div>
+
                     <p className="mt-5 text-lg text-gray-500 pl-15">
                       Have a coupon?
                     </p>
                   </div>
 
+                  {/* ✅ Payment Buttons */}
                   <div className="pl-15 max-w-3xl">
-                    <button
-                      onClick={handlePlaceOrder}
-                      className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-full font-semibold transition mt-4"
-                    >
-                      PLACE ORDER ₹{total.toFixed(2)}
-                    </button>
+                    {isCODSelected ? (
+                      <button
+                        onClick={handlePlaceOrder}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-full font-semibold transition mt-4"
+                      >
+                        PLACE ORDER (COD) - ₹{total.toFixed(2)}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStripeCheckout}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-full font-semibold transition mt-4"
+                      >
+                        PAY WITH CARD - ₹{total.toFixed(2)}
+                      </button>
+                    )}
                   </div>
                 </>
               )}
@@ -754,7 +969,11 @@ const handlePlaceOrder = async () => {
                   <p className="text-gray-500 text-sm uppercase">
                     Order Number
                   </p>
-                  <p className="text-lg font-semibold">#1234</p>
+                  <p className="text-lg font-semibold">
+                    {completedOrder?._id
+                      ? `#${completedOrder._id.slice(-8)}`
+                      : "#N/A"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-500 text-sm uppercase">Date</p>
@@ -770,9 +989,28 @@ const handlePlaceOrder = async () => {
                   <p className="text-gray-500 text-sm uppercase">
                     Payment Method
                   </p>
-                  <p className="text-lg font-semibold">Cash on Delivery</p>
+                  <p className="text-lg font-semibold">
+                    {paymentMethodUsed === "COD"
+                      ? "Cash on Delivery"
+                      : "Card Payment (Stripe)"}
+                  </p>
                 </div>
               </div>
+
+              {completedOrder && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-700">
+                    ✅ Order Status:{" "}
+                    <span className="font-bold text-green-600 uppercase">
+                      {completedOrder.status}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-700 mt-1">
+                    📧 Confirmation sent to:{" "}
+                    <span className="font-bold">{formData.email}</span>
+                  </p>
+                </div>
+              )}
 
               <h2 className="text-2xl font-bold mb-4">Order Details</h2>
               <table className="w-full text-left border-collapse border border-gray-300">
@@ -820,29 +1058,40 @@ const handlePlaceOrder = async () => {
               </table>
             </div>
 
-            <button
-              onClick={() => {
-                dispatch(clearCart());
-                setSelectedShipping(null);
-                setShowShippingMethods(false);
-                setIsCODSelected(false);
-                setFormError("");
-                setFormData({
-                  email: "",
-                  firstName: "",
-                  lastName: "",
-                  country: "India",
-                  houseAddress: "",
-                  apartment: "",
-                  city: "",
-                  phone: "",
-                });
-                router.push("/home");
-              }}
-              className="mt-8 bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full font-semibold transition"
-            >
-              Back to home
-            </button>
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={() => {
+                  dispatch(clearCart());
+                  setCompletedOrder(null);
+                  setPaymentMethodUsed("");
+                  setSelectedShipping(null);
+                  setShowShippingMethods(false);
+                  setIsCODSelected(false);
+                  setFormError("");
+                  setFormData({
+                    email: "",
+                    firstName: "",
+                    lastName: "",
+                    country: "India",
+                    houseAddress: "",
+                    apartment: "",
+                    city: "",
+                    phone: "",
+                  });
+                  router.push("/home");
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full font-semibold transition"
+              >
+                Back to Home
+              </button>
+
+              <button
+                onClick={() => router.push("/profile")}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-semibold transition"
+              >
+                View My Orders
+              </button>
+            </div>
           </div>
         )}
       </div>

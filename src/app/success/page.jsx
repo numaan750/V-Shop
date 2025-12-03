@@ -1,11 +1,10 @@
-import Home from '@/componenets/home/Home'
 import React from 'react'
+import SuccessPage from '../../componenets/Success'
 
 const page = () => {
   return (
     <div>
-      <Home />
-      
+        <SuccessPage />
     </div>
   )
 }

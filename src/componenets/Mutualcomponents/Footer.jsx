@@ -301,7 +301,7 @@ const Footer = () => {
             </li>
             <li>
               <a
-                href="#"
+                href="/cancel"
                 className="hover:text-[#ff3430]"
                 style={{
                   fontFamily: "Inter, sans-serif",
@@ -315,7 +315,7 @@ const Footer = () => {
             </li>
             <li>
               <a
-                href="#"
+                href="/success"
                 className="hover:text-[#ff3430]"
                 style={{
                   fontFamily: "Inter, sans-serif",
