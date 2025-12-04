@@ -3,11 +3,18 @@
 import React, { useEffect, useState } from "react";
 
 export default function HeroWithOverlayAndLiveTimer({ targetDate }) {
-  const defaultTarget = new Date(Date.now() + 14 * 60 * 60 * 1000); 
+  // const defaultTarget = new Date(Date.now() + 14 * 60 * 60 * 1000); 
 const target = React.useMemo(
-  () => (targetDate ? new Date(targetDate) : new Date("2025-11-13T23:59:59")), 
-  [targetDate]
-);
+    () => {
+      if (targetDate) return new Date(targetDate);
+      // Agar targetDate nahi diya, to abhi se 24 hours baad set karo
+      const futureDate = new Date();
+      futureDate.setHours(futureDate.getHours() + 24);
+      return futureDate;
+    },
+    [targetDate]
+  );
+
   const calcRemaining = (to) => {
     const total = Math.max(0, new Date(to) - new Date());
     const sec = Math.floor((total / 1000) % 60);
@@ -20,15 +27,23 @@ const target = React.useMemo(
   const [timeLeft, setTimeLeft] = useState(calcRemaining(target));
 
   useEffect(() => {
-  setTimeLeft(calcRemaining(target));
-
-  const id = setInterval(() => {
     setTimeLeft(calcRemaining(target));
-  }, 1000);
 
-  return () => clearInterval(id);
-}, [target]);
+    const id = setInterval(() => {
+      const remaining = calcRemaining(target);
+      setTimeLeft(remaining);
+      
+      // ✅ Agar timer khatam ho gaya, to reset kar do
+      if (remaining.total === 0) {
+        // Timer ko dobara 24 hours ke liye set karo
+        const newTarget = new Date();
+        newTarget.setHours(newTarget.getHours() + 24);
+        setTimeLeft(calcRemaining(newTarget));
+      }
+    }, 1000);
 
+    return () => clearInterval(id);
+  }, [target]);
 
   const fmt = (n) => String(n).padStart(2, "0");
 
@@ -73,43 +88,43 @@ const target = React.useMemo(
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-black/10 to-transparent pointer-events-none"></div>
 
         <div className="absolute inset-0 z-30 flex items-center justify-center">
-          <div className="text-center max-w-5xl px-6">
-            <h1 className="text-white font-bold text-2xl md:text-4xl lg:text-5xl leading-tight drop-shadow-lg">
-              Hurry Up! Get Up to 50% Off
-            </h1>
+  <div className="text-center max-w-5xl px-4 sm:px-6">
+    <h1 className="text-white font-bold text-xl sm:text-2xl md:text-4xl lg:text-5xl leading-tight drop-shadow-lg">
+      Hurry Up! Get Up to 50% Off
+    </h1>
 
-            <p className="mt-6 text-white text-sm md:text-xl">
-              Step into summer with sun-ready styles at can't-miss prices.
-            </p>
+    <p className="mt-4 sm:mt-6 text-white text-xs sm:text-sm md:text-lg lg:text-xl">
+      Step into summer with sun-ready styles at can't-miss prices.
+    </p>
 
-            <div className="mt-8 flex items-center justify-center gap-4">
-              {[
-                { value: fmt(timeLeft.days), label: "DAYS" },
-                { value: fmt(timeLeft.hrs), label: "HOURS" },
-                { value: fmt(timeLeft.min), label: "MINS" },
-                { value: fmt(timeLeft.sec), label: "SEC" },
-              ].map((box, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl w-20 h-20 flex flex-col items-center justify-center shadow-md"
-                >
-                  <div className="text-2xl font-extrabold text-black">
-                    {box.value}
-                  </div>
-                  <div className="text-[10px] font-semibold tracking-wider text-gray-600 mt-1">
-                    {box.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              <button className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-3 rounded-full shadow-lg">
-                SHOP THE SUMMER SALE
-              </button>
-            </div>
+    <div className="mt-6 sm:mt-8 flex items-center justify-center gap-2 sm:gap-3 md:gap-4">
+      {[
+        { value: fmt(timeLeft.days), label: "DAYS" },
+        { value: fmt(timeLeft.hrs), label: "HOURS" },
+        { value: fmt(timeLeft.min), label: "MINS" },
+        { value: fmt(timeLeft.sec), label: "SEC" },
+      ].map((box, i) => (
+        <div
+          key={i}
+          className="bg-white rounded-lg sm:rounded-xl w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 flex flex-col items-center justify-center shadow-md"
+        >
+          <div className="text-lg sm:text-xl md:text-2xl font-extrabold text-black">
+            {box.value}
+          </div>
+          <div className="text-[8px] sm:text-[9px] md:text-[10px] font-semibold tracking-wider text-gray-600 mt-0.5 sm:mt-1">
+            {box.label}
           </div>
         </div>
+      ))}
+    </div>
+
+    <div className="mt-6 sm:mt-8">
+      <button className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 text-xs sm:text-sm md:text-base rounded-full shadow-lg transition">
+        SHOP THE SUMMER SALE
+      </button>
+    </div>
+  </div>
+</div>
 
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-t from-black/60 to-transparent pointer-events-none"></div>
       </div>
