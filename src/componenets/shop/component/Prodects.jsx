@@ -144,28 +144,28 @@ const Products = () => {
     return "/placeholder-image.jpg";
   };
 
-
   const getProductPrice = (product) => {
-  const basePrice = selectedPrices[product._id] ?? product.price;
+    const basePrice = selectedPrices[product._id] ?? product.price;
 
-  if (
-    product.discount &&
-    product.discount.percent &&
-    (!product.discount.expiresAt || new Date(product.discount.expiresAt) > new Date())
-  ) {
-    const discountAmount = (basePrice * product.discount.percent) / 100;
-    return basePrice - discountAmount;
-  }
+    if (
+      product.discount &&
+      product.discount.percent &&
+      (!product.discount.expiresAt ||
+        new Date(product.discount.expiresAt) > new Date())
+    ) {
+      const discountAmount = (basePrice * product.discount.percent) / 100;
+      return basePrice - discountAmount;
+    }
 
-  return basePrice;
-};
+    return basePrice;
+  };
 
   if (loading) {
     return (
       <section className="py-20">
         <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
       </section>
     );
   }
@@ -224,16 +224,16 @@ const Products = () => {
             </select>
 
             {/* ✅ Sort Dropdown */}
-            <select
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm sm:text-base cursor-pointer transition-all duration-200"
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-            >
-              <option value="latest">Sort by latest</option>
-              <option value="priceLowHigh">Sort by price: low to high</option>
-              <option value="priceHighLow">Sort by price: high to low</option>
-              <option value="category">Sort by category</option>
-            </select>
+<select
+  className="border border-gray-300 rounded-md px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm md:text-base cursor-pointer transition-all duration-200 w-full sm:w-auto"
+  value={sortOption}
+  onChange={(e) => setSortOption(e.target.value)}
+>
+  <option value="latest">Sort by latest</option>
+  <option value="priceLowHigh">Sort by price: low to high</option>
+  <option value="priceHighLow">Sort by price: high to low</option>
+  <option value="category">Sort by category</option>
+</select>
           </div>
         </div>
 
@@ -246,10 +246,10 @@ const Products = () => {
             >
               <div className="relative">
                 {product.discount && product.discount.percent && (
-  <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded z-10">
-    {product.discount.percent}% OFF
-  </span>
-)}
+                  <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded z-10">
+                    {product.discount.percent}% OFF
+                  </span>
+                )}
 
                 {/* ✅ Image with fixed aspect ratio */}
                 <Link href={`/prodects/${product._id}`}>
@@ -293,7 +293,7 @@ const Products = () => {
                         const item = {
                           productId: product._id,
                           name: product.title,
-price: getProductPrice(product), // ✅ discounted price included
+                          price: getProductPrice(product), // ✅ discounted price included
                           quantity: 1,
                           size: selectedSizes[product._id]?.label || null,
                           color: selectedOptions[product._id]?.color || null,
@@ -341,14 +341,16 @@ price: getProductPrice(product), // ✅ discounted price included
                   </p>
                 )}
                 <p className="text-base sm:text-lg font-bold text-gray-800 mt-1 flex items-center gap-2">
-  ₹{getProductPrice(product).toFixed(2)}
-  {product.discount && product.discount.percent && (
-    <span className="text-sm line-through text-gray-400">
-      ₹{(selectedPrices[product._id] ?? product.price).toFixed(2)}
-    </span>
-  )}
-</p>
-
+                  ₹{getProductPrice(product).toFixed(2)}
+                  {product.discount && product.discount.percent && (
+                    <span className="text-sm line-through text-gray-400">
+                      ₹
+                      {(selectedPrices[product._id] ?? product.price).toFixed(
+                        2
+                      )}
+                    </span>
+                  )}
+                </p>
 
                 {/* Sizes */}
                 {product.sizes && product.sizes.length > 0 && (
