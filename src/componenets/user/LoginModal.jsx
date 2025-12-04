@@ -8,7 +8,6 @@ import { setUserId } from "@/redux/cartslice";
 import { AuthContext } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 
-
 const API_URL = "https://velora-website-backend.vercel.app/api/auth";
 
 const LoginModal = ({ isOpen, onClose }) => {
@@ -105,7 +104,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         dispatch(setUserId(userData._id));
       }
 
-      toast.success("✅ Logged in successfully!");
+      toast.success("✅ Logged in successfully!", { duration: 2000 });
       onClose();
       router.push("/profile");
     } catch (err) {

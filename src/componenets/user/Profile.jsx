@@ -332,7 +332,7 @@ const Profile = () => {
 
       dispatch(logoutUser());
       logout();
-      toast.success("Account deleted successfully!");
+      toast.success("Account deleted successfully!", { duration: 2000 });
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete account");
     }
@@ -340,6 +340,8 @@ const Profile = () => {
 
   const handleLogout = () => {
     setIsLoggingOut(true);
+    // ✅ Toast add karo
+    toast.success("Logged out successfully!", { duration: 2000 });
     setTimeout(() => {
       dispatch(logoutUser());
       logout();
@@ -400,7 +402,22 @@ const Profile = () => {
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6 md:px-8">
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000, // Default 3 seconds
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: "#10B981",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            duration: 4000,
+          },
+        }}
+      />
       <h1 className="text-3xl font-semibold text-center mb-10 tracking-wide text-gray-800">
         MY ACCOUNT
       </h1>
