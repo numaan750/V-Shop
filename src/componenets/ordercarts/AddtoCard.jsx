@@ -3,15 +3,15 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { updateQuantity, removeFromCart, clearCart } from "@/redux/cartslice";
 import { useRouter } from "next/navigation";
-import axios from "axios"; 
+import axios from "axios";
 import toast from "react-hot-toast";
 import { loadStripe } from "@stripe/stripe-js";
 
-const AddToCart = ({paymentStatus, sessionId}) => {
-  
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
-  locale: 'auto'
-});  console.log("Stripe Key:", process.env.NEXT_PUBLIC_STRIPE_KEY);
+const AddToCart = ({ paymentStatus, sessionId }) => {
+  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
+    locale: "auto",
+  });
+  console.log("Stripe Key:", process.env.NEXT_PUBLIC_STRIPE_KEY);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -30,7 +30,6 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
   const [completedOrder, setCompletedOrder] = useState(null);
   const [paymentMethodUsed, setPaymentMethodUsed] = useState("");
   // ✅ Get URL parameters
-
 
   // COD charges (you can modify this value)
   const COD_CHARGES = 50;
@@ -164,22 +163,22 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
     }
   };
 
-  const suggestedProducts = [
-    {
-      id: 1,
-      name: "Funky Hoodie",
-      category: "Men",
-      priceRange: "₹120.00 – ₹125.00",
-      image: "/related-img.jpg",
-    },
-    {
-      id: 2,
-      name: "T Jacket Combo",
-      category: "Men",
-      priceRange: "₹200.00 – ₹210.00",
-      image: "/related-img2.jpg",
-    },
-  ];
+  // const suggestedProducts = [
+  //   {
+  //     id: 1,
+  //     name: "Funky Hoodie",
+  //     category: "Men",
+  //     priceRange: "₹120.00 – ₹125.00",
+  //     image: "/related-img.jpg",
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "T Jacket Combo",
+  //     category: "Men",
+  //     priceRange: "₹200.00 – ₹210.00",
+  //     image: "/related-img2.jpg",
+  //   },
+  // ];
 
   const incrementQuantity = (id) => {
     const item = cartItems.find((i) => i.id === id);
@@ -284,7 +283,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
       toast.success("✅ Order placed successfully!");
 
       setCompletedOrder(res.data);
-    setPaymentMethodUsed("COD");
+      setPaymentMethodUsed("COD");
 
       // ✅ Move to complete step
       setStep("complete");
@@ -363,15 +362,18 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
       console.log("💾 Order data saved to sessionStorage");
 
       // ✅ Create Stripe session
-      const response = await axios.post("https://velora-website-backend.vercel.app/api/stripe", {
-        products: cartItems.map((item) => ({
-          _id: item.id,
-          name: item.name,
-          image: item.image || "https://via.placeholder.com/150",
-          price: item.price,
-          quantity: item.quantity,
-        })),
-      });
+      const response = await axios.post(
+        "https://velora-website-backend.vercel.app/api/stripe",
+        {
+          products: cartItems.map((item) => ({
+            _id: item.id,
+            name: item.name,
+            image: item.image || "https://via.placeholder.com/150",
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        }
+      );
 
       console.log("✅ Stripe session created:", response.data);
 
@@ -455,160 +457,231 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY, {
                 </div>
               ) : (
                 <>
-                  <table className="w-full text-left border-collapse border border-gray-300">
-                    <thead className="bg-[#f7edee] border-b border-gray-300">
-                      <tr>
-                        <th className="py-5 px-50 text-left">Product</th>
-                        <th className="py-5 px-2 text-left">Price</th>
-                        <th className="py-5 px-2 text-left">Quantity</th>
-                        <th className="py-5 px-2 text-left">Subtotal</th>
-                      </tr>
-                    </thead>
+                  {/* Cart Table - Desktop View */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse border border-gray-300">
+                      <thead className="bg-[#f7edee] border-b border-gray-300">
+                        <tr>
+                          <th className="py-5 px-5 text-left">Product</th>
+                          <th className="py-5 px-2 text-left">Price</th>
+                          <th className="py-5 px-2 text-left">Quantity</th>
+                          <th className="py-5 px-2 text-left">Subtotal</th>
+                        </tr>
+                      </thead>
 
-                    <tbody className="bg-white">
-                      {cartItems.map((item, idx) => (
-                        <tr
-                          key={`${item.id}_${item.size}_${item.color}_${idx}`}
-                          className="border-b border-[#f7edee]"
-                        >
-                          <td className="py-2 flex items-center gap-11 pl-5">
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              className="text-gray-400 hover:text-gray-900 cursor-pointer border rounded-full w-5 h-5 flex items-center justify-center"
-                            >
-                              ✕
-                            </button>
+                      <tbody className="bg-white">
+                        {cartItems.map((item, idx) => (
+                          <tr
+                            key={`${item.id}_${item.size}_${item.color}_${idx}`}
+                            className="border-b border-[#f7edee]"
+                          >
+                            <td className="py-2 flex items-center gap-11 pl-5">
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                className="text-gray-400 hover:text-gray-900 cursor-pointer border rounded-full w-5 h-5 flex items-center justify-center"
+                              >
+                                ✕
+                              </button>
 
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-20 h-20 object-cover rounded"
-                            />
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-20 h-20 object-cover rounded"
+                              />
 
-                            <span className="text-xl max-w-xs text-black hover:text-red-500 cursor-pointer">
+                              <span className="text-xl max-w-xs text-black hover:text-red-500 cursor-pointer">
+                                {item.name}
+                              </span>
+                            </td>
+                            <td className="py-2 text-md">
+                              ₹{item.price.toFixed(2)}
+                            </td>
+                            <td className="py-2">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => decrementQuantity(item.id)}
+                                  className="px-2 py-1 border rounded cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span>{item.quantity}</span>
+                                <button
+                                  onClick={() => incrementQuantity(item.id)}
+                                  className="px-2 py-1 border rounded cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-2 text-md">
+                              ₹{(item.price * item.quantity).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Cart Cards - Mobile/Tablet View */}
+                  <div className="lg:hidden space-y-4">
+                    {cartItems.map((item, idx) => (
+                      <div
+                        key={`${item.id}_${item.size}_${item.color}_${idx}`}
+                        className="bg-white border border-gray-300 rounded-lg p-4"
+                      >
+                        {/* Product Info */}
+                        <div className="flex gap-3 mb-4">
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="text-gray-400 hover:text-gray-900 cursor-pointer border rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0"
+                          >
+                            ✕
+                          </button>
+
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded flex-shrink-0"
+                          />
+
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base sm:text-lg font-medium text-black hover:text-red-500 cursor-pointer mb-2 line-clamp-2">
                               {item.name}
-                            </span>
-                          </td>
-                          <td className="py-2 text-md">
-                            ₹{item.price.toFixed(2)}
-                          </td>
-                          <td className="py-2 flex items-center gap-2">
+                            </h3>
+                            <p className="text-sm sm:text-base text-gray-600">
+                              Price: ₹{item.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quantity and Subtotal */}
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Qty:</span>
                             <button
                               onClick={() => decrementQuantity(item.id)}
-                              className="px-2 py-1 border rounded cursor-pointer"
+                              className="px-2 py-1 border rounded cursor-pointer text-sm"
                             >
                               -
                             </button>
-                            <span>{item.quantity}</span>
+                            <span className="text-sm font-medium">
+                              {item.quantity}
+                            </span>
                             <button
                               onClick={() => incrementQuantity(item.id)}
-                              className="px-2 py-1 border rounded cursor-pointer"
+                              className="px-2 py-1 border rounded cursor-pointer text-sm"
                             >
                               +
                             </button>
-                          </td>
-                          <td className="py-2 text-md">
-                            ₹{(item.price * item.quantity).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600">Subtotal</p>
+                            <p className="text-base sm:text-lg font-semibold">
+                              ₹{(item.price * item.quantity).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Suggested Products */}
-                  <div className="mt-5 bg-rose-50 p-3 rounded">
-                    <h2 className="font-bold mb-2">
+                  {/* <div className="mt-5 bg-rose-50 p-3 sm:p-4 rounded">
+                    <h2 className="font-bold mb-3 text-base sm:text-lg">
                       You may be interested in…
-                    </h2>
-                    <div className="flex flex-col gap-3">
+                    </h2> */}
+                    {/* <div className="flex flex-col gap-3">
                       {suggestedProducts.map((prod) => (
                         <div
                           key={prod.id}
-                          className="flex items-center justify-between gap-3 bg-white p-2"
+                          className="flex items-center justify-between gap-3 bg-white p-2 sm:p-3 rounded"
                         >
-                          <div className="relative flex items-center gap-5 pl-2">
-                            <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded shadow z-10">
+                          <div className="relative flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
+                            <span className="absolute top-0 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded shadow z-10">
                               SALE
                             </span>
 
-                            <div className="relative group">
+                            <div className="relative group flex-shrink-0">
                               <img
                                 src={prod.image}
                                 alt={prod.name}
-                                className="w-30 h-30 object-cover rounded"
+                                className="w-20 h-20 sm:w-24 sm:h-24 lg:w-30 lg:h-30 object-cover rounded"
                               />
 
                               <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="relative">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-black bg-white rounded-full cursor-pointer"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                    />
-                                  </svg>
-                                </div>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-black bg-white rounded-full cursor-pointer"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                  />
+                                </svg>
                               </div>
                             </div>
 
-                            <div>
-                              <p className="text-black hover:text-red-600 font-semibold text-xl cursor-pointer mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-black hover:text-red-600 font-semibold text-sm sm:text-base lg:text-xl cursor-pointer mb-1 truncate">
                                 {prod.name}
                               </p>
-                              <p className="text-gray-400 text-lg">
+                              <p className="text-gray-400 text-xs sm:text-sm lg:text-lg">
                                 {prod.category}
                               </p>
                             </div>
                           </div>
 
-                          <span className="font-semibold text-lg text-gray-600">
+                          <span className="font-semibold text-sm sm:text-base lg:text-lg text-gray-600 flex-shrink-0">
                             {prod.priceRange}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </>
               )}
             </div>
 
             {/* Cart Totals */}
             {cartItems.length > 0 && (
-              <div className="w-full lg:w-1/3 bg-white rounded shadow h-[400] mt-6">
-                <h2 className="text-4xl items-center font-bold mb-5 bg-[#f8ecee] p-9 rounded-t">
+              <div className="w-full lg:w-1/3 bg-white rounded shadow mt-6">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl items-center font-bold mb-5 bg-[#f8ecee] p-5 sm:p-7 lg:p-9 rounded-t">
                   Cart totals
                 </h2>
 
-                <div className="flex justify-between py-3 px-5 border-b">
-                  <span className="text-gray-700 text-lg">Subtotal</span>
-                  <span className="text-gray-900 font-medium text-lg">
+                <div className="flex justify-between py-3 px-4 sm:px-5 border-b">
+                  <span className="text-gray-700 text-base sm:text-lg">
+                    Subtotal
+                  </span>
+                  <span className="text-gray-900 font-medium text-base sm:text-lg">
                     ₹{subtotal.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="flex justify-between py-3 px-5 border-b font-bold text-lg">
+                <div className="flex justify-between py-3 px-4 sm:px-5 border-b font-bold text-base sm:text-lg">
                   <span>Total</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
 
-                <div className="px-5 mt-5">
-                  <p className="mb-3 text-gray-700">Have a coupon?</p>
+                <div className="px-4 sm:px-5 mt-5 pb-5">
+                  <p className="mb-3 text-gray-700 text-sm sm:text-base">
+                    Have a coupon?
+                  </p>
                   <button
                     onClick={() => setStep("checkout")}
-                    className="bg-red-500 hover:bg-red-600 text-white py-5 w-[50%] rounded-full text-sm font-semibold transition"
+                    className="bg-red-500 hover:bg-red-600 text-white py-3 sm:py-4 lg:py-5 w-full sm:w-[70%] lg:w-[50%] rounded-full text-sm font-semibold transition"
                   >
                     PROCEED TO CHECKOUT
                   </button>
