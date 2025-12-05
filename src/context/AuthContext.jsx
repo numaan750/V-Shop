@@ -111,13 +111,16 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("Sending data to backend:", formData);
 
-      const response = await fetch("http://localhost:4000/api/contectmodel", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        "https://velora-website-backend.vercel.app/api/contectmodel",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       console.log("Response status:", response.status);
 
